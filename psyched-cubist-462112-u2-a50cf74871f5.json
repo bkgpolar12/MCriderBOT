@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "psyched-cubist-462112-u2",
+  "private_key_id": "a50cf74871f518a8743d75014ebced3a70a36965",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDQYahMnUS5OtUe\n03sywie4BDTlFVv0cK7WKb6RLMqC8MuAApf8B4+Y3DHwjbVhNTu70a/Nm+7o3xVP\nJkqyGKJmlP+X+fZWgiMyR99lNxBNeL8hxVon5hOJlO1C1UvzTC/EabAVelJdMQdK\n06GWInTedVNmVKxk+5d9FAevBnYnGpRN+jDvU3a4wku48mZwRR3lQLUyEYIv8j88\nb2GvXlmbnkCzvK0xt/kr33r9Ih888Q42Z4FbnFzXjPrIILmO7VpMTBOdIFx9m7hU\nDKQRHhq4BhVZruu6etzPBEdAmAgmHWkmWD9l5qJpINeqIcdI2jUgnUJe584G+FWe\ndaj5A0A1AgMBAAECggEAA5bXB3vghtTHaqAHoMSrxzL3MjJAHwys0uDydi59/yun\nCHI2rtf2krTJn84SmCjyKuQJRsKuCR1OaaziWDc8hkA7aJKEV8NObAHFVk5LtTmY\nG9BIxbLQc/1Omqj/1DDaO7MEtrVgfmHutiBojpWriwHrwuLeNdcl7ttirTAc8E1X\npjrYYa1wSZU3aViDdYfDnf2O2MHgJMVAvU/H4YZGtORNTSgLW4Qn7he56M/tOQ4a\n4PjQcKtivwbapihNvtdQczuPR4cwVbQFxQL6/hbs1Elx92kMt/LCHk+J3ukybh+k\n6sSiKJMc87qogl/z1Aizy3FiKGHVijp5NMHSLY/fWQKBgQDu09Y/Xd7J+zEgZFeJ\nXrqZi7oEU8l9wpkKvrnhK62TqOQPnuf4wNVmVgGbdnxG87iTK917ox2zC4TEWqAE\nglKGM5YVAxbNAIh0aNRhLBYgW1oJw1knLPo3o5wOLI+OawVHO0qUvfeapcFexh6Z\nCCmnL+7QQtu3Q8VMM3waOtop/QKBgQDfXWRzlr0eUc8QrY+A0Gu9wE+q0Ulp3eeh\nxNcoVu0Tb3GL5WKXDMmPnfxU3orDKzBgAGPxS96rNCa1yCcpoIY2W4gQTBDSkSf8\nwe+z2QjeXxq8qO6ZidKRpEqDKS/qUClqYeugXCKMQQMyDoewnyobINiCQXN0Z+F+\nAtghYGVImQKBgBFqWyY1xyg9bACrsIJw6PSHbuIf5gKIrTZOYCmeUMMCvtawxMOr\n9CPJQ8a9ZiSaYyxAN59rbp/+yAi1fxO1GSV2H4yatA/w6QJsHoiTeW2Um8U4fIjR\ny9FA2gFimHlPLoxaM38TNzoMukQZ+GM6aCcr5KNFLNZ5V6rN2k/jWMNVAoGBAM83\ndhxhyHsbTCzdxxaqxHlZss72r9O+IMiLs0tiMThpl/4/xNH68/b/ivs1JahgJdW6\nJv3Q8/cCP7M+x04v9LLzAWyVFLo0HdO4G2dOvpKFymkhk5DvMmEY+GNrz17iFTnz\nM8QmFYrmOU+z+R/a2RYnx5Q3oiNox+G+Q8HbCrtpAoGAaebSS4QE8V0GZ8ok/8tJ\nCP+GFlmjZBtx6tw3MaYlRNWJgIqyKuib0doCvRG9GqBzuwJ+gIx2BwMLaPgmO5aW\nihyR39RQ6y2AQNzzw4L5u3SHPrsFK9LAF6VgWej97ePIUwzFlPzmLD+WWv3AT1wj\nAqAkbg2f9H1E246hEDFYJIU=\n-----END PRIVATE KEY-----\n",
+  "client_email": "kartmc-ranking@psyched-cubist-462112-u2.iam.gserviceaccount.com",
+  "client_id": "112915377254737992525",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/kartmc-ranking%40psyched-cubist-462112-u2.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
