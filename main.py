@@ -75,6 +75,7 @@ async def setup(interaction: discord.Interaction):
 
 
 @client.command(aliases=["리로드", "ㄹㄹㄷ", "ffe"])
+@commands.is_owner()
 @commands.has_role("관리자")
 async def reload(interaction: discord.Interaction):
     LoadResult = await ready_cogs()
