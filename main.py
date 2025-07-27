@@ -3,8 +3,6 @@ import asyncio
 from discord import app_commands
 from discord.ext import commands
 from settings import *
-import gspread
-import random
 import os
 from dotenv import load_dotenv
 
@@ -98,7 +96,6 @@ async def on_ready():
     print(f"✅ 로그인: {client.user.name} ({client.user.id})")
 
 
-# ✅ 안정적으로 봇 시작 (jishaku 포함) - 가장 중요!
 async def main():
     async with client:
         try:
