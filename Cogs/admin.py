@@ -34,7 +34,7 @@ class Admin(commands.Cog):
         self.verifierrole = int(os.environ.get('REACT_VERIFIER_ROLD_ID'))
         self.cooldowns = {}  # 사용자 ID별 마지막 사용 시간 저장
 
-        # 기능기
+        # 기능
         self.verify_log = True # 로그 남기기
         self.deny_dm  = True # 등록 거절 시 DM 전송
         self.verify_dm = True # 등록 시 DM 전송
