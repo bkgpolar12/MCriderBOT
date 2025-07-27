@@ -28,10 +28,12 @@ class Admin(commands.Cog):
         self.sheet_url = os.environ.get('REACT_SHEET_URL') #스프레드시트 url
         self.doc = self.gc.open_by_url(self.sheet_url)
         self.sheet = self.doc.worksheet("포레스트 통나무") #시트 기본값
-        self.tracks = trackss.TRACKK
+        self.track_sheets = self.doc.worksheets()
+        self.tracks = [worksheet.title for worksheet in self.track_sheets]
         self.verifychannel = int(os.environ.get('REACT_VERIFYCHANNEL'))
         self.verifierrole = int(os.environ.get('REACT_VERIFIER_ROLD_ID'))
         self.cooldowns = {}  # 사용자 ID별 마지막 사용 시간 저장
+        
 
         # 기능
         self.verify_log = True # 로그 남기기
@@ -55,8 +57,6 @@ class Admin(commands.Cog):
         """쿨타임 갱신"""
         self.cooldowns[user_id] = time.time()
 
-
-
     
     @lru_cache(maxsize=128)
     def get_uuid(self, username):
@@ -78,7 +78,6 @@ class Admin(commands.Cog):
     @app_commands.rename(track_name="트랙이름", toktoki="톡톡이모드")
     async def ascc(self, interaction: discord.Interaction, track_name: str, toktoki: app_commands.Choice[str]):
         """[베리파이어 전용] 기록을 오름차순으로 정리합니다."""
-
         # 권한 체크
         if not any(role.id == int(self.verifierrole) for role in interaction.user.roles):
             return await interaction.response.send_message("❌ 당신은 이 명령어를 사용할 권한이 없습니다.", ephemeral=True)
@@ -241,21 +240,46 @@ class Admin(commands.Cog):
                         columns = ("A", "B", "C", "D", "E") if toktoki == "비활성화" else ("G", "H", "I", "J", "K")
                         values = [mcname, record, kartbody, kartengine, youtubevideo] if toktoki == "비활성화" else \
                                 [mcname, record, kartbody, kartengine, youtubevideo]
-                        # 기존 기록이 더 빠르면 등록 거절
-                        if sheet.acell(f'B{i}').value > record:
-                            for col, value in zip(columns, values):
-                                sheet.update_acell(f"{col}{i}", escape_formula(value))
-                            sort_range = f"{columns[0]}2:{columns[-1]}1001"
-                            sheet.sort((2, "asc"), range=sort_range)
-
-                            # DM 및 로그 전송
-                            await self.send_dm_and_log(interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, toktoki)
-                            break
-                        else:
-                            await interaction.response.send_message(
-                                embed=discord.Embed(
-                                    title=f"❌ 등록 실패 - `#{request_id}`",
-                                    description=f"""
+                        # 기존 기록이 더 빠르면 등록 거절 (톡톡이 X)
+                        if toktoki == "비활성화":
+                            if sheet.acell(f'B{i}').value > record:
+                                await self.send_dm_and_log(interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, toktoki)
+                                for col, value in zip(columns, values):
+                                    sheet.update_acell(f"{col}{i}", escape_formula(value))
+                                sort_range = f"{columns[0]}2:{columns[-1]}1001"
+                                sheet.sort((2, "asc"), range=sort_range)
+                                break
+                            else:
+                                await interaction.response.send_message(
+                                    embed=discord.Embed(
+                                        title=f"❌ 등록 실패 - `#{request_id}`",
+                                        description=f"""
+    - **닉네임** : {mcname}
+    - **트랙명** : {track_name}
+    - **기록** : {record} | (기존 기록 : {sheet.acell(f'B{i}').value})
+    - **탑승 카트** : {kartbody}
+    - **엔진** : {kartengine}
+    - **톡톡이모드**: {toktoki}
+    - **영상** : {youtubevideo}""",
+                                        color=EmbedColor.RED,
+                                    ).set_footer(
+                                        text="기존 기록이 신청한 기록보다 빠르거나 같습니다."
+                                    )
+                                )
+                        # 기존 기록이 더 빠르면 등록 거절 (톡톡이 O)
+                        if toktoki == "활성화":
+                            if sheet.acell(f'H{i}').value > record:
+                                await self.send_dm_and_log(interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, toktoki)
+                                for col, value in zip(columns, values):
+                                    sheet.update_acell(f"{col}{i}", escape_formula(value))
+                                sort_range = f"{columns[0]}2:{columns[-1]}1001"
+                                sheet.sort((2, "asc"), range=sort_range)
+                                break
+                            else:
+                                await interaction.response.send_message(
+                                    embed=discord.Embed(
+                                        title=f"❌ 등록 실패 - `#{request_id}`",
+                                        description=f"""
 - **닉네임** : {mcname}
 - **트랙명** : {track_name}
 - **기록** : {record} | (기존 기록 : {sheet.acell(f'B{i}').value})
@@ -263,11 +287,11 @@ class Admin(commands.Cog):
 - **엔진** : {kartengine}
 - **톡톡이모드**: {toktoki}
 - **영상** : {youtubevideo}""",
-                                    color=EmbedColor.RED,
-                                ).set_footer(
-                                    text="기존 기록이 신청한 기록보다 빠르거나 같습니다."
+                                        color=EmbedColor.RED,
+                                    ).set_footer(
+                                        text="기존 기록이 신청한 기록보다 빠르거나 같습니다."
+                                    )
                                 )
-                            )
                             if self.verify_dm:
                                 ch = await username.create_dm()
                                 await ch.send(
@@ -276,7 +300,7 @@ class Admin(commands.Cog):
                                         description=f"""
 - **닉네임** : {mcname}
 - **트랙명** : {track_name}
-- **기록** : {record} | (기존 기록 : {sheet.acell(f'B{i}').value})
+- **기록** : {record} | (기존 기록 : {sheet.acell(f'H{i}').value})
 - **탑승 카트** : {kartbody}
 - **엔진** : {kartengine}
 - **톡톡이모드**: {toktoki}
@@ -352,6 +376,8 @@ class Admin(commands.Cog):
                     text="관리자 전용 메시지입니다. 유출하지 마십시오."
                 )
             )
+
+
 
 
     @app_commands.command(name="denyrecord")
@@ -498,7 +524,7 @@ class Admin(commands.Cog):
             if len(kartengine) > 8:
                 return "엔진 이름은 8글자 이하여야 합니다."
 
-            if track_name not in trackss.TRACKK:
+            if track_name not in self.tracks:
                 return "존재하지 않은 트랙이거나 트랙 이름이 올바르지 않습니다."
 
             if not self.get_uuid(mcname):
@@ -587,3 +613,4 @@ class Admin(commands.Cog):
             ),
             ephemeral=True,
         )
+
