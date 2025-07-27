@@ -243,7 +243,7 @@ class Admin(commands.Cog):
                         values = [mcname, record, kartbody, kartengine, youtubevideo] if toktoki == "비활성화" else \
                                 [mcname, record, kartbody, kartengine, youtubevideo]
                         # 기존 기록이 더 빠르면 등록 거절
-                        if sheet.acell(f'B{i}').value is not None and sheet.acell(f'B{i}').value > record:
+                        if sheet.acell(f'B{i}').value > record:
                             for col, value in zip(columns, values):
                                 sheet.update_acell(f"{col}{i}", escape_formula(value))
                             sort_range = f"{columns[0]}2:{columns[-1]}1001"
@@ -269,6 +269,24 @@ class Admin(commands.Cog):
                                     text="기존 기록이 신청한 기록보다 빠르거나 같습니다."
                                 )
                             )
+                            if self.verify_dm:
+                                ch = await username.create_dm()
+                                await ch.send(
+                                    embed=discord.Embed(
+                                        title=f"❌ 등록 실패 - `#{request_id}`",
+                                        description=f"""
+- **닉네임** : {mcname}
+- **트랙명** : {track_name}
+- **기록** : {record} | (기존 기록 : {sheet.acell(f'B{i}').value})
+- **탑승 카트** : {kartbody}
+- **엔진** : {kartengine}
+- **톡톡이모드**: {toktoki}
+- **영상** : {youtubevideo}""",
+                                    color=EmbedColor.RED,
+                                ).set_footer(
+                                    text="기존 기록이 신청한 기록보다 빠르거나 같습니다."
+                                )
+            )
                             break
                     else:
                         continue
