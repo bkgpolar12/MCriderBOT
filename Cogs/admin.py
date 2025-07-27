@@ -166,7 +166,7 @@ class Admin(commands.Cog):
             await interaction.followup.send(
                 embed=discord.Embed(
                     title=f"🕐 {track_name} 순위 ({1+((numb-1)*5)}등 ~ {5+((numb-1)*5)}등) {mode}",
-                    description=contentlist + f"\n\n\n- {numb} -" or "⚠️ 표시할 데이터가 없습니다." + f"\n\n\n- {numb} -",
+                    description=contentlist + f"\n {numb} 페이지" or "⚠️ 표시할 데이터가 없습니다." + f"\n {numb} 페이지",
                     color=EmbedColor.BLUE,
                 ),
                 ephemeral=True,
