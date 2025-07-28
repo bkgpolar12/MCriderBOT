@@ -241,34 +241,16 @@ class Admin(commands.Cog):
                         values = [mcname, record, kartbody, kartengine, youtubevideo] if toktoki == "비활성화" else \
                                 [mcname, record, kartbody, kartengine, youtubevideo]
                         # 기존 기록이 더 빠르면 등록 거절 (톡톡이 X)
-                        if toktoki == "비활성화":
-                            if sheet.acell(f'B{i}').value > record:
+                        if toktoki == "비활성화" and sheet.acell(f"A{i}").value == None:
                                 await self.send_dm_and_log(interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, toktoki)
                                 for col, value in zip(columns, values):
                                     sheet.update_acell(f"{col}{i}", escape_formula(value))
                                 sort_range = f"{columns[0]}2:{columns[-1]}1001"
                                 sheet.sort((2, "asc"), range=sort_range)
                                 break
-                            else:
-                                await interaction.response.send_message(
-                                    embed=discord.Embed(
-                                        title=f"❌ 등록 실패 - `#{request_id}`",
-                                        description=f"""
-    - **닉네임** : {mcname}
-    - **트랙명** : {track_name}
-    - **기록** : {record} | (기존 기록 : {sheet.acell(f'B{i}').value})
-    - **탑승 카트** : {kartbody}
-    - **엔진** : {kartengine}
-    - **톡톡이모드**: {toktoki}
-    - **영상** : {youtubevideo}""",
-                                        color=EmbedColor.RED,
-                                    ).set_footer(
-                                        text="기존 기록이 신청한 기록보다 빠르거나 같습니다."
-                                    )
-                                )
-                        # 기존 기록이 더 빠르면 등록 거절 (톡톡이 O)
-                        if toktoki == "활성화":
-                            if sheet.acell(f'H{i}').value > record:
+
+                        elif toktoki == "비활성화" and sheet.acell(f"A{i}").value == mcname:
+                            if sheet.acell(f'B{i}').value > record:
                                 await self.send_dm_and_log(interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, toktoki)
                                 for col, value in zip(columns, values):
                                     sheet.update_acell(f"{col}{i}", escape_formula(value))
@@ -283,6 +265,60 @@ class Admin(commands.Cog):
 - **닉네임** : {mcname}
 - **트랙명** : {track_name}
 - **기록** : {record} | (기존 기록 : {sheet.acell(f'B{i}').value})
+- **탑승 카트** : {kartbody}
+- **엔진** : {kartengine}
+- **톡톡이모드**: {toktoki}
+- **영상** : {youtubevideo}""",
+                                        color=EmbedColor.RED,
+                                    ).set_footer(
+                                        text="기존 기록이 신청한 기록보다 빠르거나 같습니다."
+                                    )
+                                )
+                            if self.verify_dm:
+                                ch = await username.create_dm()
+                                await ch.send(
+                                    embed=discord.Embed(
+                                        title=f"❌ 등록 실패 - `#{request_id}`",
+                                        description=f"""
+- **닉네임** : {mcname}
+- **트랙명** : {track_name}
+- **기록** : {record} | (기존 기록 : {sheet.acell(f'B{i}').value})
+- **탑승 카트** : {kartbody}
+- **엔진** : {kartengine}
+- **톡톡이모드**: {toktoki}
+- **영상** : {youtubevideo}""",
+                                    color=EmbedColor.RED,
+                                ).set_footer(
+                                    text="기존 기록이 신청한 기록보다 빠르거나 같습니다."
+                                )
+            )
+                            break
+
+                        # 기존 기록이 더 빠르면 등록 거절 (톡톡이 O)
+                        if toktoki == "활성화" and sheet.acell(f"A{i}").value == None:
+                                await self.send_dm_and_log(interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, toktoki)
+                                for col, value in zip(columns, values):
+                                    sheet.update_acell(f"{col}{i}", escape_formula(value))
+                                sort_range = f"{columns[0]}2:{columns[-1]}1001"
+                                sheet.sort((2, "asc"), range=sort_range)
+                                break
+                        
+                        elif toktoki == "활성화" and sheet.acell(f"A{i}").value == mcname:
+                            if sheet.acell(f'H{i}').value > record:
+                                await self.send_dm_and_log(interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, toktoki)
+                                for col, value in zip(columns, values):
+                                    sheet.update_acell(f"{col}{i}", escape_formula(value))
+                                sort_range = f"{columns[0]}2:{columns[-1]}1001"
+                                sheet.sort((2, "asc"), range=sort_range)
+                                break
+                            else:
+                                await interaction.response.send_message(
+                                    embed=discord.Embed(
+                                        title=f"❌ 등록 실패 - `#{request_id}`",
+                                        description=f"""
+- **닉네임** : {mcname}
+- **트랙명** : {track_name}
+- **기록** : {record} | (기존 기록 : {sheet.acell(f'H{i}').value})
 - **탑승 카트** : {kartbody}
 - **엔진** : {kartengine}
 - **톡톡이모드**: {toktoki}
