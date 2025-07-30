@@ -33,6 +33,9 @@ class Admin(commands.Cog):
         self.verifychannel = int(os.environ.get('REACT_VERIFYCHANNEL'))
         self.verifierrole = int(os.environ.get('REACT_VERIFIER_ROLD_ID'))
         self.cooldowns = {}  # 사용자 ID별 마지막 사용 시간 저장
+
+        #랭킹 한계
+        self.maxranking = 2001 #2000등 + 1
         
 
         # 기능
@@ -71,11 +74,6 @@ class Admin(commands.Cog):
 
         
     @app_commands.command(name="asc")
-    @app_commands.choices(toktoki=[
-        app_commands.Choice(name="활성화", value="1"),
-        app_commands.Choice(name="비활성화", value="2"),
-    ])
-    @app_commands.rename(track_name="트랙이름", toktoki="톡톡이모드")
     async def ascc(self, interaction: discord.Interaction, track_name: str, toktoki: app_commands.Choice[str]):
         """[베리파이어 전용] 기록을 오름차순으로 정리합니다."""
         # 권한 체크
@@ -99,8 +97,8 @@ class Admin(commands.Cog):
             )
 
         # 정렬 범위 설정
-        sort_range = "A2:E1001" if toktoki.name == "비활성화" else "G2:K1001"
-        sort_column = 2 if toktoki.name == "비활성화" else 8
+        sort_range = f"A2:{self.maxranking}"
+        sort_column = 2
 
         # 시트 정렬
         sheet = self.doc.worksheet(track_name)
@@ -113,12 +111,25 @@ class Admin(commands.Cog):
 
 
     @app_commands.command(name="showranking")
-    @app_commands.rename(track_name="트랙이름", numb="페이지", toktoki="톡톡이모드")
+    @app_commands.rename(track_name="트랙이름", numb="페이지", toktoki="톡톡이모드", team="팀전모드", infinity="무한부스터모드", crash="벽충돌페널티모드")
     @app_commands.choices(toktoki=[
         app_commands.Choice(name="활성화", value="1"),
-        app_commands.Choice(name="비활성화", value="2"),
+        app_commands.Choice(name="비활성화", value="0"),
     ])
-    async def show_rank(self, interaction: discord.Interaction, track_name: str, numb: int, toktoki: app_commands.Choice[str]):
+    @app_commands.choices(team=[
+        app_commands.Choice(name="활성화", value="1"),
+        app_commands.Choice(name="비활성화", value="0"),
+    ])
+    @app_commands.choices(infinity=[
+        app_commands.Choice(name="활성화", value="1"),
+        app_commands.Choice(name="비활성화", value="0"),
+    ])
+    @app_commands.choices(crash=[
+        app_commands.Choice(name="활성화", value="1"),
+        app_commands.Choice(name="비활성화", value="0"),
+    ])
+    async def show_rank(self, interaction: discord.Interaction, track_name: str, numb: int, toktoki: app_commands.Choice[str],
+team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_commands.Choice[str]):
         user_id = interaction.user.id
         if self.is_on_cooldown(user_id):
             return await interaction.response.send_message(
@@ -130,7 +141,41 @@ class Admin(commands.Cog):
                 ephemeral=True,
             )
         self.update_cooldown(user_id)
-        
+
+        # 모드 번호
+        mode_num = [] #톡톡이 팀 무부 벽
+
+        #톡톡이 모드
+        if toktoki.value == "1":
+            mode_num.insert(0, "1")
+        else:
+            mode_num.insert(0, "0")
+        #팀전
+        if team.value == "1":
+            mode_num.insert(1, "1")
+        else:
+            mode_num.insert(1, "0")
+        #무부
+        if infinity.value == "1":
+            mode_num.insert(2, "1")
+        else:
+            mode_num.insert(2, "0")
+        #벽 충돌 페널티
+        if crash.value == "1":
+            mode_num.insert(3, "1")
+        else:
+            mode_num.insert(3, "0")
+
+        if all(num == "0" for num in mode_num):
+            mode = "기본"
+        else:
+            mode = ", ".join(filter(None, [
+        "톡톡이 모드" if mode_num[0] == "1" else "",
+        "팀전 모드" if mode_num[1] == "1" else "",
+        "무한 부스터 모드" if mode_num[2] == "1" else "",
+        "벽 충돌 페널티 모드" if mode_num[3] == "1" else "",
+    ]))
+            
         await interaction.response.defer(ephemeral=True)
 
         if track_name not in self.tracks:
@@ -146,24 +191,32 @@ class Admin(commands.Cog):
         try:
             sheet = self.doc.worksheet(track_name)
             contentlist = ""
-            column_range = ("A", "B", "C", "D", "E") if toktoki.name == "비활성화" else ("G", "H", "I", "J", "K")
+            column_range = ("A", "B", "C", "D", "E", "F")
 
-            for i in range(2 + ((numb - 1) * 5), 7 + ((numb - 1) * 5)):
-                if sheet.acell(f"{column_range[0]}{i}").value is not None:
+            rank = 0
+            i = 1
+
+            while rank <= 5 or i <= self.maxranking:
+                i += 1
+                if sheet.acell(f"{column_range[0]}{i}").value is not None and sheet.acell(f"{column_range[4]}{i}").value == str(mode_num):
+                    rank += 1
                     contentlist += f'''
-- **순위** : {i-1}등 
+- **순위** : {rank}등 
 - **닉네임** : {sheet.acell(f'{column_range[0]}{i}').value}
 - **기록** : {sheet.acell(f'{column_range[1]}{i}').value}
 - **탑승 카트** : {sheet.acell(f'{column_range[2]}{i}').value} 
-- **엔진** : {sheet.acell(f'{column_range[3]}{i}').value} 
-- **영상** : {sheet.acell(f'{column_range[4]}{i}').value}\n\n'''
+- **엔진** : {sheet.acell(f'{column_range[3]}{i}').value}
+- **모드** : {mode}
+- **영상** : {sheet.acell(f'{column_range[5]}{i}').value}\n\n'''
+                elif sheet.acell(f"{column_range[0]}{i}").value is not None and sheet.acell(f"{column_range[4]}{i}").value != str(mode_num):
+                    continue
                 else:
                     break
 
-            mode = "[톡톡이 모드 비활성화]" if toktoki.name == "비활성화" else "[톡톡이 모드 활성화]"
+
             await interaction.followup.send(
                 embed=discord.Embed(
-                    title=f"🕐 {track_name} 순위 ({1+((numb-1)*5)}등 ~ {5+((numb-1)*5)}등) {mode}",
+                    title=f"🕐 {track_name} 순위 ({1+((numb-1)*5)}등 ~ {5+((numb-1)*5)}등)",
                     description=contentlist + f"\n {numb} 페이지" or "⚠️ 표시할 데이터가 없습니다." + f"\n {numb} 페이지",
                     color=EmbedColor.BLUE,
                 ),
@@ -229,32 +282,32 @@ class Admin(commands.Cog):
             kartengine = uiddata["engine"]
             youtubevideo = uiddata["youtubevideo"]
             username = uiddata["username"]
-            toktoki = uiddata["toktoki"]
+            mode_num = uiddata["mode_num"]
+            mode = uiddata["mode"]
 
             if track_name in self.tracks:
                 sheet = self.doc.worksheet(track_name)
 
-                for i in range(2, 1001):
+                for i in range(2, self.maxranking+1):
                     if sheet.acell(f"A{i}").value is None or sheet.acell(f"A{i}").value == mcname:
                         # 기록을 삽입하거나 덮어쓰기
-                        columns = ("A", "B", "C", "D", "E") if toktoki == "비활성화" else ("G", "H", "I", "J", "K")
-                        values = [mcname, record, kartbody, kartengine, youtubevideo] if toktoki == "비활성화" else \
-                                [mcname, record, kartbody, kartengine, youtubevideo]
-                        # 기존 기록이 더 빠르면 등록 거절 (톡톡이 X)
-                        if toktoki == "비활성화" and sheet.acell(f"A{i}").value == None:
-                                await self.send_dm_and_log(interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, toktoki)
+                        columns = ("A", "B", "C", "D", "E", "F")
+                        values = [mcname, record, kartbody, kartengine, str(mode_num), youtubevideo]
+                        # 기존 기록이 더 빠르면 등록 거절
+                        if sheet.acell(f"A{i}").value == None:
+                                await self.send_dm_and_log(interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, mode)
                                 for col, value in zip(columns, values):
                                     sheet.update_acell(f"{col}{i}", escape_formula(value))
-                                sort_range = f"{columns[0]}2:{columns[-1]}1001"
+                                sort_range = f"{columns[0]}2:{columns[-1]}{self.maxranking}"
                                 sheet.sort((2, "asc"), range=sort_range)
                                 break
 
-                        elif toktoki == "비활성화" and sheet.acell(f"A{i}").value == mcname:
+                        elif sheet.acell(f"E{i}").value == mode_num and sheet.acell(f"A{i}").value == mcname:
                             if sheet.acell(f'B{i}').value > record:
-                                await self.send_dm_and_log(interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, toktoki)
+                                await self.send_dm_and_log(interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, mode)
                                 for col, value in zip(columns, values):
                                     sheet.update_acell(f"{col}{i}", escape_formula(value))
-                                sort_range = f"{columns[0]}2:{columns[-1]}1001"
+                                sort_range = f"{columns[0]}2:{columns[-1]}{self.maxranking}"
                                 sheet.sort((2, "asc"), range=sort_range)
                                 break
                             else:
@@ -267,7 +320,7 @@ class Admin(commands.Cog):
 - **기록** : {record} | (기존 기록 : {sheet.acell(f'B{i}').value})
 - **탑승 카트** : {kartbody}
 - **엔진** : {kartengine}
-- **톡톡이모드**: {toktoki}
+- **모드**: {mode}
 - **영상** : {youtubevideo}""",
                                         color=EmbedColor.RED,
                                     ).set_footer(
@@ -285,7 +338,7 @@ class Admin(commands.Cog):
 - **기록** : {record} | (기존 기록 : {sheet.acell(f'B{i}').value})
 - **탑승 카트** : {kartbody}
 - **엔진** : {kartengine}
-- **톡톡이모드**: {toktoki}
+- **모드**: {mode}
 - **영상** : {youtubevideo}""",
                                     color=EmbedColor.RED,
                                 ).set_footer(
@@ -294,59 +347,6 @@ class Admin(commands.Cog):
             )
                             break
 
-                        # 기존 기록이 더 빠르면 등록 거절 (톡톡이 O)
-                        if toktoki == "활성화" and sheet.acell(f"A{i}").value == None:
-                                await self.send_dm_and_log(interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, toktoki)
-                                for col, value in zip(columns, values):
-                                    sheet.update_acell(f"{col}{i}", escape_formula(value))
-                                sort_range = f"{columns[0]}2:{columns[-1]}1001"
-                                sheet.sort((2, "asc"), range=sort_range)
-                                break
-                        
-                        elif toktoki == "활성화" and sheet.acell(f"A{i}").value == mcname:
-                            if sheet.acell(f'H{i}').value > record:
-                                await self.send_dm_and_log(interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, toktoki)
-                                for col, value in zip(columns, values):
-                                    sheet.update_acell(f"{col}{i}", escape_formula(value))
-                                sort_range = f"{columns[0]}2:{columns[-1]}1001"
-                                sheet.sort((2, "asc"), range=sort_range)
-                                break
-                            else:
-                                await interaction.response.send_message(
-                                    embed=discord.Embed(
-                                        title=f"❌ 등록 실패 - `#{request_id}`",
-                                        description=f"""
-- **닉네임** : {mcname}
-- **트랙명** : {track_name}
-- **기록** : {record} | (기존 기록 : {sheet.acell(f'H{i}').value})
-- **탑승 카트** : {kartbody}
-- **엔진** : {kartengine}
-- **톡톡이모드**: {toktoki}
-- **영상** : {youtubevideo}""",
-                                        color=EmbedColor.RED,
-                                    ).set_footer(
-                                        text="기존 기록이 신청한 기록보다 빠르거나 같습니다."
-                                    )
-                                )
-                            if self.verify_dm:
-                                ch = await username.create_dm()
-                                await ch.send(
-                                    embed=discord.Embed(
-                                        title=f"❌ 등록 실패 - `#{request_id}`",
-                                        description=f"""
-- **닉네임** : {mcname}
-- **트랙명** : {track_name}
-- **기록** : {record} | (기존 기록 : {sheet.acell(f'H{i}').value})
-- **탑승 카트** : {kartbody}
-- **엔진** : {kartengine}
-- **톡톡이모드**: {toktoki}
-- **영상** : {youtubevideo}""",
-                                    color=EmbedColor.RED,
-                                ).set_footer(
-                                    text="기존 기록이 신청한 기록보다 빠르거나 같습니다."
-                                )
-            )
-                            break
                     else:
                         continue
 
@@ -371,7 +371,7 @@ class Admin(commands.Cog):
             )
 
 
-    async def send_dm_and_log(self, interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, toktoki):
+    async def send_dm_and_log(self, interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, mode):
         """DM 및 로그 전송을 처리하는 함수."""
         # DM 전송
         if self.verify_dm:
@@ -385,7 +385,7 @@ class Admin(commands.Cog):
 - **기록** : {record}
 - **탑승 카트** : {kartbody}
 - **엔진** : {kartengine}
-- **톡톡이모드**: {toktoki}
+- **모드**: {mode}
 - **영상** : {youtubevideo}""",
                     color=EmbedColor.YELLOW,
                 ).set_footer(
@@ -405,7 +405,7 @@ class Admin(commands.Cog):
 - **기록** : {record}
 - **탑승 카트** : {kartbody}
 - **엔진** : {kartengine}
-- **톡톡이모드**: {toktoki}
+- **모드**: {mode}
 - **영상** : {youtubevideo}""",
                     color=EmbedColor.BLUE,
                 ).set_footer(
@@ -452,7 +452,7 @@ class Admin(commands.Cog):
             kartengine = self.uiddata[request_id]["engine"]
             youtubevideo = self.uiddata[request_id]["youtubevideo"]
             request_user = self.uiddata[request_id]["username"]
-            toktoki = self.uiddata[request_id]["toktoki"]
+            mode = self.uiddata[request_id]["mode"]
             
             if self.deny_dm == True:
                 ch = await request_user.create_dm() #기록 신청한 유저에게 개인 메시지
@@ -465,7 +465,7 @@ class Admin(commands.Cog):
 - **기록** : {record}
 - **탑승 카트** : {kartbody}
 - **엔진** : {kartengine}
-- **톡톡이 모드** : {toktoki}
+- **모드** : {mode}
 - **영상** : {youtubevideo}
 
 
@@ -487,7 +487,7 @@ class Admin(commands.Cog):
 - **기록** : {record}
 - **탑승 카트** : {kartbody}
 - **엔진** : {kartengine}
-- **톡톡이모드**: {toktoki}
+- **모드**: {mode}
 - **영상** : {youtubevideo}
 
 
@@ -523,13 +523,29 @@ class Admin(commands.Cog):
         kartbody="탑승카트",
         kartengine="엔진",
         youtubevideo="영상",
-        toktoki="톡톡이모드"
+        toktoki="톡톡이모드",
+        team="팀전모드",
+        infinity="무한부스터모드",
+        crash="벽충돌페널티모드"
     )
     @app_commands.choices(toktoki=[
         app_commands.Choice(name="활성화", value="1"),
-        app_commands.Choice(name="비활성화", value="2"),
+        app_commands.Choice(name="비활성화", value="0"),
     ])
-    async def add_record(self, interaction: discord.Interaction, mcname: str, track_name: str, record: str, kartbody: str, kartengine: str, youtubevideo: str, toktoki: app_commands.Choice[str]):
+    @app_commands.choices(team=[
+        app_commands.Choice(name="활성화", value="1"),
+        app_commands.Choice(name="비활성화", value="0"),
+    ])
+    @app_commands.choices(infinity=[
+        app_commands.Choice(name="활성화", value="1"),
+        app_commands.Choice(name="비활성화", value="0"),
+    ])
+    @app_commands.choices(crash=[
+        app_commands.Choice(name="활성화", value="1"),
+        app_commands.Choice(name="비활성화", value="0"),
+    ])
+    async def add_record(self, interaction: discord.Interaction, mcname: str, track_name: str, record: str, kartbody: str, kartengine: str, youtubevideo: str,
+toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_commands.Choice[str]):
         """기록을 신청합니다."""
         user_id = interaction.user.id
 
@@ -580,6 +596,44 @@ class Admin(commands.Cog):
                 ephemeral=True,
             )
 
+        # 모드 번호
+        mode_num = [] #톡톡이 팀 무부 벽
+
+        #톡톡이 모드
+        if toktoki.value == "1":
+            mode_num.insert(0, "1")
+        else:
+            mode_num.insert(0, "0")
+        #팀전
+        if team.value == "1":
+            mode_num.insert(1, "1")
+        else:
+            mode_num.insert(1, "0")
+        #무부
+        if infinity.value == "1":
+            mode_num.insert(2, "1")
+        else:
+            mode_num.insert(2, "0")
+        #벽 충돌 페널티
+        if crash.value == "1":
+            mode_num.insert(3, "1")
+        else:
+            mode_num.insert(3, "0")
+
+        print(mode_num)
+
+        if all(num == "0" for num in mode_num):
+            mode = "기본"
+        else:
+            mode = ", ".join(filter(None, [
+        "톡톡이 모드" if mode_num[0] == "1" else "",
+        "팀전 모드" if mode_num[1] == "1" else "",
+        "무한 부스터 모드" if mode_num[2] == "1" else "",
+        "벽 충돌 페널티 모드" if mode_num[3] == "1" else "",
+    ]))
+        
+        print(mode)
+            
         # UID 생성 및 기록 저장
         uid = random.randint(1, 100000000)
         while uid in self.uiddata:
@@ -593,7 +647,8 @@ class Admin(commands.Cog):
             "kart": kartbody,
             "engine": kartengine,
             "youtubevideo": youtubevideo,
-            "toktoki": toktoki.name,
+            "mode_num": mode_num,
+            "mode": mode,
             "timestamp": time.time(),
         }
 
@@ -631,7 +686,7 @@ class Admin(commands.Cog):
 - **기록** : {self.uiddata[uid]['record']}
 - **탑승 카트** : {self.uiddata[uid]['kart']}
 - **엔진** : {self.uiddata[uid]['engine']}
-- **톡톡이 모드** : {self.uiddata[uid]['toktoki']}
+- **모드** : {self.uiddata[uid]['mode']}
 - **영상** : {self.uiddata[uid]['youtubevideo']}""",
                 color=EmbedColor.YELLOW,
             ).set_footer(
