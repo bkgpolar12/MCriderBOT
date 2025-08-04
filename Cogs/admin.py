@@ -211,34 +211,43 @@ team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_c
 
         try:
             sheet = self.doc.worksheet(track_name)
-            contentlist = ""
+            all_data = sheet.get_all_values()  # 전체 시트를 한 번에 가져옴 (1회 호출)
             column_range = ("A", "B", "C", "D", "E", "F")
+            contentlist = ""
 
-            rank = ((numb-1)*5)
-            i = 1+((numb-1)*5)
+            mode_num_str = str(mode_num)  # 비교를 위해 문자열로 변환
 
-            while rank <= ((numb)*5)-1:
-                i += 1
-                if sheet.acell(f"{column_range[0]}{i}").value is not None and sheet.acell(f"{column_range[4]}{i}").value == str(mode_num):
-                    rank += 1
-                    contentlist += f'''
-- **순위** : {rank}등 
-- **닉네임** : {sheet.acell(f'{column_range[0]}{i}').value}
-- **기록** : {sheet.acell(f'{column_range[1]}{i}').value}
-- **탑승 카트** : {sheet.acell(f'{column_range[2]}{i}').value} 
-- **엔진** : {sheet.acell(f'{column_range[3]}{i}').value}
-- **모드** : {mode}
-- **영상** : {sheet.acell(f'{column_range[5]}{i}').value}\n\n'''
-                elif sheet.acell(f"{column_range[0]}{i}").value is not None and sheet.acell(f"{column_range[4]}{i}").value != str(mode_num):
-                    continue
-                else:
+            rank = ((numb - 1) * 5)
+            i = 1 + ((numb - 1) * 5)
+            count = 0
+
+            # i는 실제 시트에서 2번째 행부터 시작 (헤더 생략)
+            for row_idx in range(i, len(all_data)):
+                if count >= 5:
                     break
 
+                row = all_data[row_idx]
+                if len(row) < 6:
+                    continue  # 비정상 데이터 무시
+
+                if row[0] and row[4] == mode_num_str:
+                    count += 1
+                    contentlist += f'''
+- **순위** : {rank + count}등 
+- **닉네임** : {row[0]}
+- **기록** : {row[1]}
+- **탑승 카트** : {row[2]} 
+- **엔진** : {row[3]}
+- **모드** : {mode}
+- **영상** : {row[5]}\n\n'''
+
+            if not contentlist:
+                contentlist = "⚠️ 표시할 데이터가 없습니다."
 
             await interaction.followup.send(
                 embed=discord.Embed(
                     title=f"🕐 {track_name} 순위 ({1+((numb-1)*5)}등 ~ {5+((numb-1)*5)}등)",
-                    description=contentlist + f"\n {numb} 페이지" or "⚠️ 표시할 데이터가 없습니다." + f"\n {numb} 페이지",
+                    description=contentlist + f"\n {numb} 페이지",
                     color=EmbedColor.BLUE,
                 ),
                 ephemeral=True,
