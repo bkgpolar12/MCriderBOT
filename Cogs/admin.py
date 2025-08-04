@@ -111,7 +111,7 @@ class Admin(commands.Cog):
 
 
     @app_commands.command(name="showranking")
-    @app_commands.rename(track_name="트랙이름", numb="페이지", toktoki="톡톡이모드", team="팀전모드", infinity="무한부스터모드", crash="벽충돌페널티모드")
+    @app_commands.rename(track_name="트랙이름", numb="페이지", kartengine="엔진", toktoki="톡톡이모드", team="팀전모드", infinity="무한부스터모드", crash="벽충돌페널티모드")
     @app_commands.choices(toktoki=[
         app_commands.Choice(name="활성화", value="1"),
         app_commands.Choice(name="비활성화", value="0"),
@@ -128,7 +128,28 @@ class Admin(commands.Cog):
         app_commands.Choice(name="활성화", value="1"),
         app_commands.Choice(name="비활성화", value="0"),
     ])
-    async def show_rank(self, interaction: discord.Interaction, track_name: str, numb: int, toktoki: app_commands.Choice[str],
+    @app_commands.choices(kartengine=[
+        # 전체
+        app_commands.Choice(name="전체", value="전체"),
+
+        # 엔진
+        app_commands.Choice(name="X", value="X"),
+        app_commands.Choice(name="V1",value="V1"),
+        app_commands.Choice(name="EX", value="EX"),
+        app_commands.Choice(name="JIU", value="JIU"),
+        app_commands.Choice(name="NEW", value="NEW"),
+        app_commands.Choice(name="Z7", value="Z7"),
+        app_commands.Choice(name="PRO",value="PRO"),
+        app_commands.Choice(name="A2",value="A2"),
+        app_commands.Choice(name="1.0", value="1.0"),
+        
+        # 더미 엔진
+        app_commands.Choice(name="(더미) N1", value="N1"),
+        app_commands.Choice(name="(더미) KEY", value="KEY"),
+        app_commands.Choice(name="(더미) MK", value="MK"),
+        app_commands.Choice(name="(더미) BOAT", value="BOAT"),
+    ])
+    async def show_rank(self, interaction: discord.Interaction, track_name: str, numb: int, kartengine: app_commands.Choice[str], toktoki: app_commands.Choice[str],
 team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_commands.Choice[str]):
         user_id = interaction.user.id
         if self.is_on_cooldown(user_id):
@@ -193,12 +214,12 @@ team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_c
             contentlist = ""
             column_range = ("A", "B", "C", "D", "E", "F")
 
-            rank = 0
-            i = 1
+            rank = ((numb-1)*5)
+            i = 1+((numb-1)*5)
 
-            while rank <= 5 or i <= self.maxranking:
+            while rank <= ((numb)*5)-1:
                 i += 1
-                if sheet.acell(f"{column_range[0]}{i}").value is not None and sheet.acell(f"{column_range[4]}{i}").value == str(mode_num):
+                if sheet.acell(f"{column_range[0]}{i}").value is not None and sheet.acell(f"{column_range[4]}{i}").value == str(mode_num) and (sheet.acell(f"{column_range[3]}{i}").value == str(kartengine.value) or str(kartengine.value) == "전체"):
                     rank += 1
                     contentlist += f'''
 - **순위** : {rank}등 
@@ -208,7 +229,7 @@ team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_c
 - **엔진** : {sheet.acell(f'{column_range[3]}{i}').value}
 - **모드** : {mode}
 - **영상** : {sheet.acell(f'{column_range[5]}{i}').value}\n\n'''
-                elif sheet.acell(f"{column_range[0]}{i}").value is not None and sheet.acell(f"{column_range[4]}{i}").value != str(mode_num):
+                elif sheet.acell(f"{column_range[0]}{i}").value is not None and (sheet.acell(f"{column_range[4]}{i}").value != str(mode_num) or (sheet.acell(f"{column_range[3]}{i}").value != str(kartengine.value) or str(kartengine.value) != "전체")):
                     continue
                 else:
                     break
@@ -544,7 +565,24 @@ team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_c
         app_commands.Choice(name="활성화", value="1"),
         app_commands.Choice(name="비활성화", value="0"),
     ])
-    async def add_record(self, interaction: discord.Interaction, mcname: str, track_name: str, record: str, kartbody: str, kartengine: str, youtubevideo: str,
+    @app_commands.choices(kartengine=[
+        app_commands.Choice(name="X", value="X"),
+        app_commands.Choice(name="V1",value="V1"),
+        app_commands.Choice(name="EX", value="EX"),
+        app_commands.Choice(name="JIU", value="JIU"),
+        app_commands.Choice(name="NEW", value="NEW"),
+        app_commands.Choice(name="Z7", value="Z7"),
+        app_commands.Choice(name="PRO",value="PRO"),
+        app_commands.Choice(name="A2",value="A2"),
+        app_commands.Choice(name="1.0", value="1.0"),
+        
+        # 더미 엔진
+        app_commands.Choice(name="(더미) N1", value="N1"),
+        app_commands.Choice(name="(더미) KEY", value="KEY"),
+        app_commands.Choice(name="(더미) MK", value="MK"),
+        app_commands.Choice(name="(더미) BOAT", value="BOAT"),
+    ])
+    async def add_record(self, interaction: discord.Interaction, mcname: str, track_name: str, record: str, kartbody: str, kartengine: app_commands.Choice[str], youtubevideo: str,
 toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_commands.Choice[str]):
         """기록을 신청합니다."""
         user_id = interaction.user.id
@@ -573,9 +611,6 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
             if len(kartbody) > 20:
                 return "탑승 카트 이름은 20글자 이하여야 합니다."
 
-            if len(kartengine) > 8:
-                return "엔진 이름은 8글자 이하여야 합니다."
-
             if track_name not in self.tracks:
                 return "존재하지 않은 트랙이거나 트랙 이름이 올바르지 않습니다."
 
@@ -597,7 +632,7 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
             )
 
         # 모드 번호
-        mode_num = [] #톡톡이 팀 무부 벽
+        mode_num = [] #톡톡이 팀 무부 벽 순서
 
         #톡톡이 모드
         if toktoki.value == "1":
@@ -645,7 +680,7 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
             "track": track_name,
             "record": record,
             "kart": kartbody,
-            "engine": kartengine,
+            "engine": kartengine.value,
             "youtubevideo": youtubevideo,
             "mode_num": mode_num,
             "mode": mode,

@@ -11,7 +11,7 @@ intents = discord.Intents.all()
 client = commands.Bot(
     command_prefix="/",
     intents=intents,
-    owner_ids=[int(os.environ.get('REACT_OWNER1')), int(os.environ.get('REACT_OWNER2'))],
+    owner_ids=[int(os.environ.get('REACT_OWNER1')), int(os.environ.get('REACT_OWNER2')), int(os.environ.get('REACT_OWNER3'))],
 )
 
 
