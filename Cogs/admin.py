@@ -111,7 +111,7 @@ class Admin(commands.Cog):
 
 
     @app_commands.command(name="showranking")
-    @app_commands.rename(track_name="트랙이름", numb="페이지", kartengine="엔진", toktoki="톡톡이모드", team="팀전모드", infinity="무한부스터모드", crash="벽충돌페널티모드")
+    @app_commands.rename(track_name="트랙이름", numb="페이지", toktoki="톡톡이모드", team="팀전모드", infinity="무한부스터모드", crash="벽충돌페널티모드")
     @app_commands.choices(toktoki=[
         app_commands.Choice(name="활성화", value="1"),
         app_commands.Choice(name="비활성화", value="0"),
@@ -128,28 +128,28 @@ class Admin(commands.Cog):
         app_commands.Choice(name="활성화", value="1"),
         app_commands.Choice(name="비활성화", value="0"),
     ])
-    @app_commands.choices(kartengine=[
-        # 전체
-        app_commands.Choice(name="전체", value="전체"),
+    # @app_commands.choices(kartengine=[
+    #     # 전체
+    #     app_commands.Choice(name="전체", value="전체"),
 
-        # 엔진
-        app_commands.Choice(name="X", value="X"),
-        app_commands.Choice(name="V1",value="V1"),
-        app_commands.Choice(name="EX", value="EX"),
-        app_commands.Choice(name="JIU", value="JIU"),
-        app_commands.Choice(name="NEW", value="NEW"),
-        app_commands.Choice(name="Z7", value="Z7"),
-        app_commands.Choice(name="PRO",value="PRO"),
-        app_commands.Choice(name="A2",value="A2"),
-        app_commands.Choice(name="1.0", value="1.0"),
+    #     # 엔진
+    #     app_commands.Choice(name="X", value="X"),
+    #     app_commands.Choice(name="V1",value="V1"),
+    #     app_commands.Choice(name="EX", value="EX"),
+    #     app_commands.Choice(name="JIU", value="JIU"),
+    #     app_commands.Choice(name="NEW", value="NEW"),
+    #     app_commands.Choice(name="Z7", value="Z7"),
+    #     app_commands.Choice(name="PRO",value="PRO"),
+    #     app_commands.Choice(name="A2",value="A2"),
+    #     app_commands.Choice(name="1.0", value="1.0"),
         
-        # 더미 엔진
-        app_commands.Choice(name="(더미) N1", value="N1"),
-        app_commands.Choice(name="(더미) KEY", value="KEY"),
-        app_commands.Choice(name="(더미) MK", value="MK"),
-        app_commands.Choice(name="(더미) BOAT", value="BOAT"),
-    ])
-    async def show_rank(self, interaction: discord.Interaction, track_name: str, numb: int, kartengine: app_commands.Choice[str], toktoki: app_commands.Choice[str],
+    #     # 더미 엔진
+    #     app_commands.Choice(name="(더미) N1", value="N1"),
+    #     app_commands.Choice(name="(더미) KEY", value="KEY"),
+    #     app_commands.Choice(name="(더미) MK", value="MK"),
+    #     app_commands.Choice(name="(더미) BOAT", value="BOAT"),
+    # ])
+    async def show_rank(self, interaction: discord.Interaction, track_name: str, numb: int, toktoki: app_commands.Choice[str],
 team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_commands.Choice[str]):
         user_id = interaction.user.id
         if self.is_on_cooldown(user_id):
@@ -219,7 +219,7 @@ team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_c
 
             while rank <= ((numb)*5)-1:
                 i += 1
-                if sheet.acell(f"{column_range[0]}{i}").value is not None and sheet.acell(f"{column_range[4]}{i}").value == str(mode_num) and (sheet.acell(f"{column_range[3]}{i}").value == str(kartengine.value) or str(kartengine.value) == "전체"):
+                if sheet.acell(f"{column_range[0]}{i}").value is not None and sheet.acell(f"{column_range[4]}{i}").value == str(mode_num):
                     rank += 1
                     contentlist += f'''
 - **순위** : {rank}등 
@@ -229,7 +229,7 @@ team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_c
 - **엔진** : {sheet.acell(f'{column_range[3]}{i}').value}
 - **모드** : {mode}
 - **영상** : {sheet.acell(f'{column_range[5]}{i}').value}\n\n'''
-                elif sheet.acell(f"{column_range[0]}{i}").value is not None and (sheet.acell(f"{column_range[4]}{i}").value != str(mode_num) or (sheet.acell(f"{column_range[3]}{i}").value != str(kartengine.value) or str(kartengine.value) != "전체")):
+                elif sheet.acell(f"{column_range[0]}{i}").value is not None and sheet.acell(f"{column_range[4]}{i}").value != str(mode_num):
                     continue
                 else:
                     break
