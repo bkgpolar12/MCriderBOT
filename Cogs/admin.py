@@ -733,8 +733,18 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
 - **모드** : {self.uiddata[uid]['mode']}
 - **영상** : {self.uiddata[uid]['youtubevideo']}""",
                 color=EmbedColor.YELLOW,
-            ).set_footer(
-                text="/denyrecord [ID] [사유] 를 통해 거절하거나 /verifyrecord 를 입력하여 등록해 주세요."
+            ),
+            view=discord.ui.View().add_item(
+                discord.ui.Button(
+                    custom_id=make_deny_record_custom_id(uid),
+                    style=discord.ButtonStyle.danger,
+                    label="거절",
+                ),
+                discord.ui.Button(
+                    custom_id=make_verify_record_custom_id(uid),
+                    style=discord.ButtonStyle.success,
+                    label="등록",
+                ),
             ),
             mention_author=False,
         )
