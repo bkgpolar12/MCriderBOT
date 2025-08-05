@@ -111,7 +111,7 @@ class Admin(commands.Cog):
 
 
     @app_commands.command(name="showranking")
-    @app_commands.rename(track_name="트랙이름", numb="페이지", toktoki="톡톡이모드", team="팀전모드", infinity="무한부스터모드", crash="벽충돌페널티모드")
+    @app_commands.rename(track_name="트랙이름", numb="페이지", kartengine="엔진", toktoki="톡톡이모드", team="팀전모드", infinity="무한부스터모드", crash="벽충돌페널티모드")
     @app_commands.choices(toktoki=[
         app_commands.Choice(name="활성화", value="1"),
         app_commands.Choice(name="비활성화", value="0"),
@@ -128,28 +128,28 @@ class Admin(commands.Cog):
         app_commands.Choice(name="활성화", value="1"),
         app_commands.Choice(name="비활성화", value="0"),
     ])
-    # @app_commands.choices(kartengine=[
-    #     # 전체
-    #     app_commands.Choice(name="전체", value="전체"),
+    @app_commands.choices(kartengine=[
+        # 전체
+        app_commands.Choice(name="전체", value="전체"),
 
-    #     # 엔진
-    #     app_commands.Choice(name="X", value="X"),
-    #     app_commands.Choice(name="V1",value="V1"),
-    #     app_commands.Choice(name="EX", value="EX"),
-    #     app_commands.Choice(name="JIU", value="JIU"),
-    #     app_commands.Choice(name="NEW", value="NEW"),
-    #     app_commands.Choice(name="Z7", value="Z7"),
-    #     app_commands.Choice(name="PRO",value="PRO"),
-    #     app_commands.Choice(name="A2",value="A2"),
-    #     app_commands.Choice(name="1.0", value="1.0"),
+        # 엔진
+        app_commands.Choice(name="X", value="X"),
+        app_commands.Choice(name="V1",value="V1"),
+        app_commands.Choice(name="EX", value="EX"),
+        app_commands.Choice(name="JIU", value="JIU"),
+        app_commands.Choice(name="NEW", value="NEW"),
+        app_commands.Choice(name="Z7", value="Z7"),
+        app_commands.Choice(name="PRO",value="PRO"),
+        app_commands.Choice(name="A2",value="A2"),
+        app_commands.Choice(name="1.0", value="1.0"),
         
-    #     # 더미 엔진
-    #     app_commands.Choice(name="(더미) N1", value="N1"),
-    #     app_commands.Choice(name="(더미) KEY", value="KEY"),
-    #     app_commands.Choice(name="(더미) MK", value="MK"),
-    #     app_commands.Choice(name="(더미) BOAT", value="BOAT"),
-    # ])
-    async def show_rank(self, interaction: discord.Interaction, track_name: str, numb: int, toktoki: app_commands.Choice[str],
+        # 더미 엔진
+        app_commands.Choice(name="(더미) N1", value="N1"),
+        app_commands.Choice(name="(더미) KEY", value="KEY"),
+        app_commands.Choice(name="(더미) MK", value="MK"),
+        app_commands.Choice(name="(더미) BOAT", value="BOAT"),
+    ])
+    async def show_rank(self, interaction: discord.Interaction, track_name: str, numb: int, kartengine: app_commands.Choice[str], toktoki: app_commands.Choice[str],
 team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_commands.Choice[str]):
         user_id = interaction.user.id
         if self.is_on_cooldown(user_id):
@@ -212,7 +212,6 @@ team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_c
         try:
             sheet = self.doc.worksheet(track_name)
             all_data = sheet.get_all_values()  # 전체 시트를 한 번에 가져옴 (1회 호출)
-            column_range = ("A", "B", "C", "D", "E", "F")
             contentlist = ""
 
             mode_num_str = str(mode_num)  # 비교를 위해 문자열로 변환
@@ -230,7 +229,7 @@ team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_c
                 if len(row) < 6:
                     continue  # 비정상 데이터 무시
 
-                if row[0] and row[4] == mode_num_str:
+                if row[0] and row[4] == mode_num_str and (row[3] == kartengine.value or kartengine.value == "전체"):
                     count += 1
                     contentlist += f'''
 - **순위** : {rank + count}등 
