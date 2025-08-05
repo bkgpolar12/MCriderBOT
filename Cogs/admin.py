@@ -740,6 +740,7 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
                     style=discord.ButtonStyle.danger,
                     label="거절",
                 ),
+            ).add_item(
                 discord.ui.Button(
                     custom_id=CustomID.make_verify_record(uid),
                     style=discord.ButtonStyle.success,
