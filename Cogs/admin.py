@@ -736,12 +736,12 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
             ),
             view=discord.ui.View().add_item(
                 discord.ui.Button(
-                    custom_id=make_deny_record_custom_id(uid),
+                    custom_id=CustomID.make_deny_record(uid),
                     style=discord.ButtonStyle.danger,
                     label="거절",
                 ),
                 discord.ui.Button(
-                    custom_id=make_verify_record_custom_id(uid),
+                    custom_id=CustomID.make_verify_record(uid),
                     style=discord.ButtonStyle.success,
                     label="등록",
                 ),
