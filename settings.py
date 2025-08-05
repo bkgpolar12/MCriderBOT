@@ -21,5 +21,5 @@ class CustomID:
     def make_deny_record(uid: int) -> str:
         return f"{CustomID.DENY_RECORD}{uid}"
 
-    def get_deny_record_custom_id(custom_id: str) -> int:
+    def get_deny_record_uid(custom_id: str) -> int:
         return int(custom_id.removeprefix(CustomID.DENY_RECORD))
