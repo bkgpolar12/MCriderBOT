@@ -10,8 +10,9 @@ import re
 import time
 from dotenv import load_dotenv
 import os
+import asyncio
 
-    
+
 async def setup(bot):
     await bot.add_cog(Admin(bot))
 
@@ -36,7 +37,7 @@ class Admin(commands.Cog):
 
         #랭킹 한계
         self.maxranking = 2001 #2000등 + 1
-        
+
 
         # 기능
         self.verify_log = True # 로그 남기기
@@ -60,7 +61,7 @@ class Admin(commands.Cog):
         """쿨타임 갱신"""
         self.cooldowns[user_id] = time.time()
 
-    
+
     @lru_cache(maxsize=128)
     def get_uuid(self, username):
         try:
@@ -70,16 +71,16 @@ class Admin(commands.Cog):
         except requests.RequestException:
             pass
         return None
-        
 
-        
+
+
     @app_commands.command(name="asc")
     async def ascc(self, interaction: discord.Interaction, track_name: str, toktoki: app_commands.Choice[str]):
         """[베리파이어 전용] 기록을 오름차순으로 정리합니다."""
         # 권한 체크
         if not any(role.id == int(self.verifierrole) for role in interaction.user.roles):
             return await interaction.response.send_message("❌ 당신은 이 명령어를 사용할 권한이 없습니다.", ephemeral=True)
-        
+
         # 쿨다운 체크
         user_id = interaction.user.id
         if self.is_on_cooldown(user_id):
@@ -148,6 +149,7 @@ class Admin(commands.Cog):
         app_commands.Choice(name="(더미) KEY", value="KEY"),
         app_commands.Choice(name="(더미) MK", value="MK"),
         app_commands.Choice(name="(더미) BOAT", value="BOAT"),
+        app_commands.Choice(name="(더미) GEAR", value="GEAR"),
     ])
     async def show_rank(self, interaction: discord.Interaction, track_name: str, numb: int, kartengine: app_commands.Choice[str], toktoki: app_commands.Choice[str],
 team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_commands.Choice[str]):
@@ -263,143 +265,6 @@ team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_c
             )
 
 
-
-    @app_commands.command(name="verifyrecord")
-    @app_commands.rename(request_id="아이디") 
-    async def verify_record(self, interaction: discord.Interaction, request_id: int):
-        """[베리파이어 전용] 기록 신청을 허용하고 등록합니다."""
-        if not any(role.id == int(self.verifierrole) for role in interaction.user.roles):
-            return await interaction.response.send_message("❌ 당신은 이 명령어를 사용할 권한이 없습니다.", ephemeral=True)
-        
-        user = interaction.user
-        user_id = user.id
-
-        if self.is_on_cooldown(user_id):
-            return await interaction.response.send_message(
-                embed=discord.Embed(
-                    title="⏳ 잠시만요!",
-                    description="명령어는 5초 간격으로만 사용할 수 있습니다.",
-                    color=EmbedColor.RED,
-                ),
-                ephemeral=True,
-            )
-        self.update_cooldown(user_id)
-        self.cleanup_old_requests()
-
-        def escape_formula(value: str) -> str:
-            """엑셀에서 수식을 방지하는 함수."""
-            if isinstance(value, str) and value.startswith(('=', '+', '-', '@')):
-                return "'" + value
-            return value
-
-        try:
-            uiddata = self.uiddata.get(request_id)
-            if not uiddata:
-                return await interaction.response.send_message(
-                    embed=discord.Embed(
-                        title="❌ 등록 실패",
-                        description="존재하지 않는 ID입니다.",
-                        color=EmbedColor.RED,
-                    ),
-                    ephemeral=True,
-                )
-
-            track_name = uiddata["track"]
-            mcname = uiddata["mcname"]
-            record = uiddata["record"]
-            kartbody = uiddata["kart"]
-            kartengine = uiddata["engine"]
-            youtubevideo = uiddata["youtubevideo"]
-            username = uiddata["username"]
-            mode_num = uiddata["mode_num"]
-            mode = uiddata["mode"]
-
-            if track_name in self.tracks:
-                sheet = self.doc.worksheet(track_name)
-
-                for i in range(2, self.maxranking+1):
-                    if sheet.acell(f"A{i}").value is None or sheet.acell(f"A{i}").value == mcname:
-                        # 기록을 삽입하거나 덮어쓰기
-                        columns = ("A", "B", "C", "D", "E", "F")
-                        values = [mcname, record, kartbody, kartengine, str(mode_num), youtubevideo]
-                        # 기존 기록이 더 빠르면 등록 거절
-                        if sheet.acell(f"A{i}").value == None:
-                                await self.send_dm_and_log(interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, mode)
-                                for col, value in zip(columns, values):
-                                    sheet.update_acell(f"{col}{i}", escape_formula(value))
-                                sort_range = f"{columns[0]}2:{columns[-1]}{self.maxranking}"
-                                sheet.sort((2, "asc"), range=sort_range)
-                                break
-
-                        elif sheet.acell(f"E{i}").value == mode_num and sheet.acell(f"A{i}").value == mcname:
-                            if sheet.acell(f'B{i}').value > record:
-                                await self.send_dm_and_log(interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, mode)
-                                for col, value in zip(columns, values):
-                                    sheet.update_acell(f"{col}{i}", escape_formula(value))
-                                sort_range = f"{columns[0]}2:{columns[-1]}{self.maxranking}"
-                                sheet.sort((2, "asc"), range=sort_range)
-                                break
-                            else:
-                                await interaction.response.send_message(
-                                    embed=discord.Embed(
-                                        title=f"❌ 등록 실패 - `#{request_id}`",
-                                        description=f"""
-- **닉네임** : {mcname}
-- **트랙명** : {track_name}
-- **기록** : {record} | (기존 기록 : {sheet.acell(f'B{i}').value})
-- **탑승 카트** : {kartbody}
-- **엔진** : {kartengine}
-- **모드**: {mode}
-- **영상** : {youtubevideo}""",
-                                        color=EmbedColor.RED,
-                                    ).set_footer(
-                                        text="기존 기록이 신청한 기록보다 빠르거나 같습니다."
-                                    )
-                                )
-                            if self.verify_dm:
-                                ch = await username.create_dm()
-                                await ch.send(
-                                    embed=discord.Embed(
-                                        title=f"❌ 등록 실패 - `#{request_id}`",
-                                        description=f"""
-- **닉네임** : {mcname}
-- **트랙명** : {track_name}
-- **기록** : {record} | (기존 기록 : {sheet.acell(f'B{i}').value})
-- **탑승 카트** : {kartbody}
-- **엔진** : {kartengine}
-- **모드**: {mode}
-- **영상** : {youtubevideo}""",
-                                    color=EmbedColor.RED,
-                                ).set_footer(
-                                    text="기존 기록이 신청한 기록보다 빠르거나 같습니다."
-                                )
-            )
-                            break
-
-                    else:
-                        continue
-
-            else:
-                await interaction.response.send_message(
-                    embed=discord.Embed(
-                        title="❌ 등록 실패",
-                        description="존재하지 않는 트랙입니다.",
-                        color=EmbedColor.RED,
-                    ),
-                    ephemeral=True,
-                )
-
-        except Exception as e:
-            await interaction.response.send_message(
-                embed=discord.Embed(
-                    title="❌ 예외 발생",
-                    description=f"오류가 발생했습니다: `{type(e).__name__}`\n{str(e)}",
-                    color=EmbedColor.RED,
-                ),
-                ephemeral=True,
-            )
-
-
     async def send_dm_and_log(self, interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, mode):
         """DM 및 로그 전송을 처리하는 함수."""
         # DM 전송
@@ -444,105 +309,6 @@ team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_c
 
 
 
-
-    @app_commands.command(name="denyrecord")
-    @app_commands.rename(request_id="아이디", reason="사유")
-    async def deny_record(
-        self, interaction: discord.Interaction, request_id: int, reason: str
-    ):
-        """[베리파이어 전용] 기록 신청을 거절합니다."""
-        if not any(role.id == int(self.verifierrole) for role in interaction.user.roles):
-            await interaction.response.send_message(
-            "❌ 당신은 이 명령어를 사용할 권한이 없습니다.",
-            ephemeral=True
-        )
-            return
-        
-        user = interaction.user
-        user_id = user.id
-        
-        if self.is_on_cooldown(user_id):
-            await interaction.response.send_message(
-            embed=discord.Embed(
-                title="⏳ 잠시만요!",
-                description="명령어는 5초 간격으로만 사용할 수 있습니다.",
-                color=EmbedColor.RED,
-            ),
-            ephemeral=True,
-        )
-            return
-        self.update_cooldown(user_id)
-
-        try:
-            track_name = self.uiddata[request_id]["track"]
-            mcname = self.uiddata[request_id]["mcname"]
-            record = self.uiddata[request_id]["record"]
-            kartbody = self.uiddata[request_id]["kart"]
-            kartengine = self.uiddata[request_id]["engine"]
-            youtubevideo = self.uiddata[request_id]["youtubevideo"]
-            request_user = self.uiddata[request_id]["username"]
-            mode = self.uiddata[request_id]["mode"]
-            
-            if self.deny_dm == True:
-                ch = await request_user.create_dm() #기록 신청한 유저에게 개인 메시지
-                await ch.send(
-                    embed=discord.Embed(
-                        title=f"❌ 등록 거부됨 - `#{request_id}`",
-                        description=f"""
-- **닉네임** : {mcname}
-- **트랙명** : {track_name}
-- **기록** : {record}
-- **탑승 카트** : {kartbody}
-- **엔진** : {kartengine}
-- **모드** : {mode}
-- **영상** : {youtubevideo}
-
-
-- **사유** : {reason}""",
-                        color=EmbedColor.RED,
-                    ).set_footer(
-                        text="등록 조건에 맞춰 제출하시기 바랍니다."
-                    )
-                )
-            if self.verify_log == True:
-                    ch = self.client.get_channel(int(os.environ.get('REACT_VERIFYLOGCHANNEL')))
-                    await ch.send(
-                        embed=discord.Embed(
-                            title=f"❌ 등록 거부 - `#{request_id}`",
-                            description=f"""
-- **담당자** : {user.display_name} ({user.name})
-- **닉네임** : {mcname}
-- **트랙명** : {track_name}
-- **기록** : {record}
-- **탑승 카트** : {kartbody}
-- **엔진** : {kartengine}
-- **모드**: {mode}
-- **영상** : {youtubevideo}
-
-
-- **사유** : {reason}""",
-                            color=EmbedColor.BLUE,
-                        ).set_footer(
-                            text="관리자 전용 메시지입니다. 유출하지 마십시오."
-                        )
-                    )
-            await interaction.response.send_message(
-                embed=discord.Embed(
-                    title="✅ 거절 완료",
-                    description=f"요청 `#{request_id}`을 거절하였습니다.",
-                    color=EmbedColor.GREEN,
-                ),
-                ephemeral=True
-            )
-        except KeyError:
-            await interaction.response.send_message(
-                embed=discord.Embed(
-                    title="❌ 등록 실패",
-                    description="존재하지 않는 ID입니다.",
-                    color=EmbedColor.RED,
-                ),
-                ephemeral=True,
-            )
 
     @app_commands.command(name="addrecord")
     @app_commands.rename(
@@ -589,6 +355,7 @@ team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_c
         app_commands.Choice(name="(더미) KEY", value="KEY"),
         app_commands.Choice(name="(더미) MK", value="MK"),
         app_commands.Choice(name="(더미) BOAT", value="BOAT"),
+        app_commands.Choice(name="(더미) GEAR", value="GEAR"),
     ])
     async def add_record(self, interaction: discord.Interaction, mcname: str, track_name: str, record: str, kartbody: str, kartengine: app_commands.Choice[str], youtubevideo: str,
 toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_commands.Choice[str]):
@@ -674,9 +441,9 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
         "무한 부스터 모드" if mode_num[2] == "1" else "",
         "벽 충돌 페널티 모드" if mode_num[3] == "1" else "",
     ]))
-        
+
         print(mode)
-            
+
         # UID 생성 및 기록 저장
         uid = random.randint(1, 100000000)
         while uid in self.uiddata:
@@ -694,6 +461,7 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
             "mode": mode,
             "timestamp": time.time(),
         }
+
 
         # 채널 확인 및 메시지 전송
         verifychannel = os.environ.get('REACT_VERIFYCHANNEL')
@@ -718,7 +486,25 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
                 ephemeral=True,
             )
 
-        # 채널에 기록 신청 전송
+                # 채널에 기록 신청 전송
+        try:
+            view = discord.ui.View().add_item(
+                discord.ui.Button(
+                    custom_id=CustomID.make_deny_record(uid),
+                    style=discord.ButtonStyle.danger,
+                    label="거절",
+                ),
+            ).add_item(
+                discord.ui.Button(
+                    custom_id=CustomID.make_verify_record(uid),
+                    style=discord.ButtonStyle.success,
+                    label="등록",
+                ),
+            )
+        except Exception as e:
+            print("VIEW ERROR:", type(e), e)
+            view = None  # view 생성에 실패하면 None으로 설정
+
         await channel.send(
             embed=discord.Embed(
                 title=f"🔔 기록 등록 신청 - `#{uid}`",
@@ -732,9 +518,8 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
 - **모드** : {self.uiddata[uid]['mode']}
 - **영상** : {self.uiddata[uid]['youtubevideo']}""",
                 color=EmbedColor.YELLOW,
-            ).set_footer(
-                text="/denyrecord [ID] [사유] 를 통해 거절하거나 /verifyrecord 를 입력하여 등록해 주세요."
             ),
+            view=view,          # 위에서 에러가 발생하면 None (버튼 없이 전송됨)
             mention_author=False,
         )
 
@@ -748,3 +533,242 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
             ephemeral=True,
         )
 
+
+    @commands.Cog.listener()
+    async def on_interaction(self, interaction: discord.Interaction):
+        if interaction.data.get("component_type") == 2:
+            DELAY_TO_DELETE = 5
+            custom_id = interaction.data.get("custom_id")
+
+            if custom_id.startswith(CustomID.VERIFY_RECORD):
+                if not any(role.id == int(self.verifierrole) for role in interaction.user.roles):
+                    return await interaction.response.send_message("❌ 당신은 이 버튼을 누를 권한이 없습니다.", ephemeal=True)
+
+                request_id = CustomID.get_verify_record_uid(custom_id)
+
+                user = interaction.user
+
+                await interaction.response.defer()
+
+                def escape_formula(value: str) -> str:
+                    """엑셀에서 수식을 방지하는 함수."""
+                    if isinstance(value, str) and value.startswith(('=', '+', '-', '@')):
+                        return "'" + value
+                    return value
+
+                try:
+                    uiddata = self.uiddata.get(request_id)
+                    if not uiddata:
+                        return await interaction.followup.send(
+                            embed=discord.Embed(
+                                title="❌ 등록 실패",
+                                description="존재하지 않는 ID입니다.",
+                                color=EmbedColor.RED,
+                            ),
+                            ephemeral=True,
+                        )
+
+                    track_name = uiddata["track"]
+                    mcname = uiddata["mcname"]
+                    record = uiddata["record"]
+                    kartbody = uiddata["kart"]
+                    kartengine = uiddata["engine"]
+                    youtubevideo = uiddata["youtubevideo"]
+                    username = uiddata["username"]
+                    mode_num = uiddata["mode_num"]
+                    mode = uiddata["mode"]
+
+                    if track_name in self.tracks:
+                        sheet = self.doc.worksheet(track_name)
+
+                        for i in range(2, self.maxranking+1):
+                            if sheet.acell(f"A{i}").value is None or sheet.acell(f"A{i}").value == mcname:
+                                # 기록을 삽입하거나 덮어쓰기
+                                columns = ("A", "B", "C", "D", "E", "F")
+                                values = [mcname, record, kartbody, kartengine, str(mode_num), youtubevideo]
+                                # 기존 기록이 더 빠르면 등록 거절
+                                if sheet.acell(f"A{i}").value == None:
+                                        await self.send_dm_and_log(interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, mode)
+                                        for col, value in zip(columns, values):
+                                            sheet.update_acell(f"{col}{i}", escape_formula(value))
+                                        sort_range = f"{columns[0]}2:{columns[-1]}{self.maxranking}"
+                                        sheet.sort((2, "asc"), range=sort_range)
+                                        await interaction.followup.send(
+                                            embed=discord.Embed(
+                                                title="✅ 등록 완료",
+                                                description=f"요청 `#{request_id}`을 등록하였습니다.",
+                                                color=EmbedColor.GREEN,
+                                            ),
+                                            ephemeral=True,
+                                        )
+                                        await asyncio.sleep(DELAY_TO_DELETE) # 5초 뒤에 등록 요청 메세지 삭제
+                                        await interaction.delete_original_response()
+                                        break
+
+                                elif sheet.acell(f"E{i}").value == mode_num and sheet.acell(f"A{i}").value == mcname:
+                                    if sheet.acell(f'B{i}').value > record:
+                                        await self.send_dm_and_log(interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, mode)
+                                        for col, value in zip(columns, values):
+                                            sheet.update_acell(f"{col}{i}", escape_formula(value))
+                                        sort_range = f"{columns[0]}2:{columns[-1]}{self.maxranking}"
+                                        sheet.sort((2, "asc"), range=sort_range)
+                                        await interaction.followup.send(
+                                            embed=discord.Embed(
+                                                title="✅ 등록 완료",
+                                                description=f"요청 `#{request_id}`을 등록하였습니다.",
+                                                color=EmbedColor.GREEN,
+                                            ),
+                                            ephemeral=True,
+                                        )
+                                        await asyncio.sleep(DELAY_TO_DELETE) # 5초 뒤에 등록 요청 메세지 삭제
+                                        await interaction.delete_original_response()
+                                        break
+                                    else:
+                                        await interaction.followup.send(
+                                            embed=discord.Embed(
+                                                title=f"❌ 등록 실패 - `#{request_id}`",
+                                                description=f"""
+- **닉네임** : {mcname}
+- **트랙명** : {track_name}
+- **기록** : {record} | (기존 기록 : {sheet.acell(f'B{i}').value})
+- **탑승 카트** : {kartbody}
+- **엔진** : {kartengine}
+- **모드**: {mode}
+- **영상** : {youtubevideo}""",
+                                                color=EmbedColor.RED,
+                                            ).set_footer(
+                                                text="기존 기록이 신청한 기록보다 빠르거나 같습니다."
+                                            ),
+                                            view=discord.ui.View(),
+                                        )
+                                    if self.verify_dm:
+                                        ch = await username.create_dm()
+                                        await ch.send(
+                                            embed=discord.Embed(
+                                                title=f"❌ 등록 실패 - `#{request_id}`",
+                                                description=f"""
+- **닉네임** : {mcname}
+- **트랙명** : {track_name}
+- **기록** : {record} | (기존 기록 : {sheet.acell(f'B{i}').value})
+- **탑승 카트** : {kartbody}
+- **엔진** : {kartengine}
+- **모드**: {mode}
+- **영상** : {youtubevideo}""",
+                                            color=EmbedColor.RED,
+                                        ).set_footer(
+                                            text="기존 기록이 신청한 기록보다 빠르거나 같습니다."
+                                        )
+                    )
+                                    break
+
+                            else:
+                                continue
+
+                    else:
+                        await interaction.followup.send(
+                            embed=discord.Embed(
+                                title="❌ 등록 실패",
+                                description="존재하지 않는 트랙입니다.",
+                                color=EmbedColor.RED,
+                            ),
+                            ephemeral=True,
+                        )
+
+                except Exception as e:
+                    await interaction.followup.send(
+                        embed=discord.Embed(
+                            title="❌ 예외 발생",
+                            description=f"오류가 발생했습니다: `{type(e).__name__}`\n{str(e)}",
+                            color=EmbedColor.RED,
+                        ),
+                        ephemeral=True,
+                )
+            elif custom_id.startswith(CustomID.DENY_RECORD):
+                if not any(role.id == int(self.verifierrole) for role in interaction.user.roles):
+                    return await interaction.response.send_message("❌ 당신은 이 버튼을 누를 권한이 없습니다.", ephemeal=True)
+
+                request_id = CustomID.get_deny_record_uid(custom_id)
+
+                uiddata = self.uiddata.get(request_id)
+                if not uiddata:
+                    return await interaction.response.send_message(
+                        embed=discord.Embed(
+                            title="❌ 등록 실패",
+                            description="존재하지 않는 ID입니다.",
+                            color=EmbedColor.RED,
+                        ),
+                        ephemeral=True,
+                    )
+
+                deny_dm = self.deny_dm
+                verify_log = self.verify_log
+                client = self.client
+
+                class DenyModal(discord.ui.Modal, title=f"등록 거절 - #{request_id}"):
+                    reason = discord.ui.TextInput(label="사유")
+
+                    async def on_submit(self, interaction: discord.Interaction):
+                        await interaction.response.defer()
+
+                        user = interaction.user
+
+                        track_name = uiddata["track"]
+                        mcname = uiddata["mcname"]
+                        record = uiddata["record"]
+                        kartbody = uiddata["kart"]
+                        kartengine = uiddata["engine"]
+                        youtubevideo = uiddata["youtubevideo"]
+                        request_user = uiddata["username"]
+                        mode = uiddata["mode"]
+
+                        if deny_dm == True:
+                            ch = await request_user.create_dm() # 기록 신청한 유저에게 개인 메시지
+                            await ch.send(
+                                embed=discord.Embed(
+                                    title=f"❌ 등록 거부됨 - `#{request_id}`",
+                                    description=f"""
+- **닉네임** : {mcname}
+- **트랙명** : {track_name}
+- **기록** : {record}
+- **탑승 카트** : {kartbody}
+- **엔진** : {kartengine}
+- **모드** : {mode}
+- **영상** : {youtubevideo}
+- **사유** : {self.reason}""",
+                                    color=EmbedColor.RED,
+                                ).set_footer(
+                                    text="등록 조건에 맞춰 제출하시기 바랍니다."
+                                ),
+                            )
+                        if verify_log == True:
+                            ch = client.get_channel(int(os.environ.get('REACT_VERIFYLOGCHANNEL')))
+                            await ch.send(
+                                embed=discord.Embed(
+                                    title=f"❌ 등록 거부 - `#{request_id}`",
+                                    description=f"""
+- **담당자** : {user.display_name} ({user.name})
+- **닉네임** : {mcname}
+- **트랙명** : {track_name}
+- **기록** : {record}
+- **탑승 카트** : {kartbody}
+- **엔진** : {kartengine}
+- **모드**: {mode}
+- **영상** : {youtubevideo}
+- **사유** : {self.reason}""",
+                                    color=EmbedColor.BLUE,
+                                ).set_footer(
+                                    text="관리자 전용 메시지입니다. 유출하지 마십시오."
+                                ),
+                            )
+                        await interaction.followup.send(
+                            embed=discord.Embed(
+                                title="✅ 거절 완료",
+                                description=f"요청 `#{request_id}`을 거절하였습니다.",
+                                color=EmbedColor.GREEN,
+                            ),
+                            ephemeral=True,
+                        )
+                        await asyncio.sleep(DELAY_TO_DELETE) # 5초 뒤 기록 요청 메세지 삭제
+                        await interaction.delete_original_response()
+
+                await interaction.response.send_modal(DenyModal())
