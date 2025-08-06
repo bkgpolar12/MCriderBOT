@@ -10,6 +10,7 @@ import re
 import time
 from dotenv import load_dotenv
 import os
+import asyncio
 
     
 async def setup(bot):
@@ -308,105 +309,6 @@ team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_c
 
 
 
-    @app_commands.command(name="denyrecord")
-    @app_commands.rename(request_id="아이디", reason="사유")
-    async def deny_record(
-        self, interaction: discord.Interaction, request_id: int, reason: str
-    ):
-        """[베리파이어 전용] 기록 신청을 거절합니다."""
-        if not any(role.id == int(self.verifierrole) for role in interaction.user.roles):
-            await interaction.response.send_message(
-            "❌ 당신은 이 명령어를 사용할 권한이 없습니다.",
-            ephemeral=True
-        )
-            return
-        
-        user = interaction.user
-        user_id = user.id
-        
-        if self.is_on_cooldown(user_id):
-            await interaction.response.send_message(
-            embed=discord.Embed(
-                title="⏳ 잠시만요!",
-                description="명령어는 5초 간격으로만 사용할 수 있습니다.",
-                color=EmbedColor.RED,
-            ),
-            ephemeral=True,
-        )
-            return
-        self.update_cooldown(user_id)
-
-        try:
-            track_name = self.uiddata[request_id]["track"]
-            mcname = self.uiddata[request_id]["mcname"]
-            record = self.uiddata[request_id]["record"]
-            kartbody = self.uiddata[request_id]["kart"]
-            kartengine = self.uiddata[request_id]["engine"]
-            youtubevideo = self.uiddata[request_id]["youtubevideo"]
-            request_user = self.uiddata[request_id]["username"]
-            mode = self.uiddata[request_id]["mode"]
-            
-            if self.deny_dm == True:
-                ch = await request_user.create_dm() #기록 신청한 유저에게 개인 메시지
-                await ch.send(
-                    embed=discord.Embed(
-                        title=f"❌ 등록 거부됨 - `#{request_id}`",
-                        description=f"""
-- **닉네임** : {mcname}
-- **트랙명** : {track_name}
-- **기록** : {record}
-- **탑승 카트** : {kartbody}
-- **엔진** : {kartengine}
-- **모드** : {mode}
-- **영상** : {youtubevideo}
-
-
-- **사유** : {reason}""",
-                        color=EmbedColor.RED,
-                    ).set_footer(
-                        text="등록 조건에 맞춰 제출하시기 바랍니다."
-                    )
-                )
-            if self.verify_log == True:
-                    ch = self.client.get_channel(int(os.environ.get('REACT_VERIFYLOGCHANNEL')))
-                    await ch.send(
-                        embed=discord.Embed(
-                            title=f"❌ 등록 거부 - `#{request_id}`",
-                            description=f"""
-- **담당자** : {user.display_name} ({user.name})
-- **닉네임** : {mcname}
-- **트랙명** : {track_name}
-- **기록** : {record}
-- **탑승 카트** : {kartbody}
-- **엔진** : {kartengine}
-- **모드**: {mode}
-- **영상** : {youtubevideo}
-
-
-- **사유** : {reason}""",
-                            color=EmbedColor.BLUE,
-                        ).set_footer(
-                            text="관리자 전용 메시지입니다. 유출하지 마십시오."
-                        )
-                    )
-            await interaction.response.send_message(
-                embed=discord.Embed(
-                    title="✅ 거절 완료",
-                    description=f"요청 `#{request_id}`을 거절하였습니다.",
-                    color=EmbedColor.GREEN,
-                ),
-                ephemeral=True
-            )
-        except KeyError:
-            await interaction.response.send_message(
-                embed=discord.Embed(
-                    title="❌ 등록 실패",
-                    description="존재하지 않는 ID입니다.",
-                    color=EmbedColor.RED,
-                ),
-                ephemeral=True,
-            )
-
 
     @app_commands.command(name="addrecord")
     @app_commands.rename(
@@ -627,6 +529,7 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
     @commands.Cog.listener()
     async def on_interaction(self, interaction: discord.Interaction):
         if interaction.data.get("component_type") == 2:
+            DELAY_TO_DELETE = 5
             custom_id = interaction.data.get("custom_id")
 
             if custom_id.startswith(CustomID.VERIFY_RECORD):
@@ -783,4 +686,97 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
                             color=EmbedColor.RED,
                         ),
                         ephemeral=True,
+                )
+            elif custom_id.startswith(CustomID.DENY_RECORD):
+                if not any(role.id == int(self.verifierrole) for role in interaction.user.roles):
+                    return await interaction.response.send_message("❌ 당신은 이 버튼을 누를 권한이 없습니다.", ephemeal=True)
+
+                request_id = CustomID.get_deny_record_uid(custom_id)
+
+                uiddata = self.uiddata.get(request_id)
+                if not uiddata:
+                    return await interaction.response.send_message(
+                        embed=discord.Embed(
+                            title="❌ 등록 실패",
+                            description="존재하지 않는 ID입니다.",
+                            color=EmbedColor.RED,
+                        ),
+                        ephemeral=True,
                     )
+
+                deny_dm = self.deny_dm
+                verify_log = self.verify_log
+                client = self.client
+                    
+                class DenyModal(discord.ui.Modal, title=f"등록 거절 - #{request_id}"):
+                    reason = discord.ui.TextInput(label="사유")
+                    
+                    async def on_submit(self, interaction: discord.Interaction):
+                        await interaction.response.defer()
+                        
+                        user = interaction.user
+
+                        track_name = uiddata["track"]
+                        mcname = uiddata["mcname"]
+                        record = uiddata["record"]
+                        kartbody = uiddata["kart"]
+                        kartengine = uiddata["engine"]
+                        youtubevideo = uiddata["youtubevideo"]
+                        request_user = uiddata["username"]
+                        mode = uiddata["mode"]
+                        
+                        if deny_dm == True:
+                            ch = await request_user.create_dm() # 기록 신청한 유저에게 개인 메시지
+                            await ch.send(
+                                embed=discord.Embed(
+                                    title=f"❌ 등록 거부됨 - `#{request_id}`",
+                                    description=f"""
+- **닉네임** : {mcname}
+- **트랙명** : {track_name}
+- **기록** : {record}
+- **탑승 카트** : {kartbody}
+- **엔진** : {kartengine}
+- **모드** : {mode}
+- **영상** : {youtubevideo}
+
+
+- **사유** : {self.reason}""",
+                                    color=EmbedColor.RED,
+                                ).set_footer(
+                                    text="등록 조건에 맞춰 제출하시기 바랍니다."
+                                ),
+                            )
+                        if verify_log == True:
+                            ch = client.get_channel(int(os.environ.get('REACT_VERIFYLOGCHANNEL')))
+                            await ch.send(
+                                embed=discord.Embed(
+                                    title=f"❌ 등록 거부 - `#{request_id}`",
+                                    description=f"""
+- **담당자** : {user.display_name} ({user.name})
+- **닉네임** : {mcname}
+- **트랙명** : {track_name}
+- **기록** : {record}
+- **탑승 카트** : {kartbody}
+- **엔진** : {kartengine}
+- **모드**: {mode}
+- **영상** : {youtubevideo}
+
+
+- **사유** : {self.reason}""",
+                                    color=EmbedColor.BLUE,
+                                ).set_footer(
+                                    text="관리자 전용 메시지입니다. 유출하지 마십시오."
+                                ),
+                            )
+                        await interaction.followup.send(
+                            embed=discord.Embed(
+                                title="✅ 거절 완료",
+                                description=f"요청 `#{request_id}`을 거절하였습니다.",
+                                color=EmbedColor.GREEN,
+                            ),
+                            ephemeral=True,
+                        )
+                        await asyncio.sleep(DELAY_TO_DELETE) # 5초 뒤 기록 요청 메세지 삭제
+                        await interaction.delete_original_response()
+                
+                await interaction.response.send_modal(DenyModal())
