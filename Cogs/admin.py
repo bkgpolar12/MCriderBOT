@@ -585,22 +585,16 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
                                             sheet.update_acell(f"{col}{i}", escape_formula(value))
                                         sort_range = f"{columns[0]}2:{columns[-1]}{self.maxranking}"
                                         sheet.sort((2, "asc"), range=sort_range)
-                                        await interaction.edit_original_response(
+                                        await interaction.followup.send(
                                             embed=discord.Embed(
-                                                title=f"✅ 기록 등록 완료 - `#{request_id}`",
-                                                description=f"""
-- **신청자** : {self.uiddata[request_id]['username'].display_name} ({self.uiddata[request_id]['username'].name})
-- **마크 닉네임** : {self.uiddata[request_id]['mcname']}
-- **트랙명** : {self.uiddata[request_id]['track']}
-- **기록** : {self.uiddata[request_id]['record']}
-- **탑승 카트** : {self.uiddata[request_id]['kart']}
-- **엔진** : {self.uiddata[request_id]['engine']}
-- **모드** : {self.uiddata[request_id]['mode']}
-- **영상** : {self.uiddata[request_id]['youtubevideo']}""",
-                                            color=EmbedColor.GREEN,
+                                                title="✅ 등록 완료",
+                                                description=f"요청 `#{request_id}`을 등록하였습니다.",
+                                                color=EmbedColor.GREEN,
                                             ),
-                                            view=discord.ui.View(),
+                                            ephemeral=True,
                                         )
+                                        await asyncio.sleep(DELAY_TO_DELETE) # 5초 뒤에 등록 요청 메세지 삭제
+                                        await interaction.delete_original_response()
                                         break
 
                                 elif sheet.acell(f"E{i}").value == mode_num and sheet.acell(f"A{i}").value == mcname:
@@ -610,22 +604,16 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
                                             sheet.update_acell(f"{col}{i}", escape_formula(value))
                                         sort_range = f"{columns[0]}2:{columns[-1]}{self.maxranking}"
                                         sheet.sort((2, "asc"), range=sort_range)
-                                        await interaction.edit_original_response(
+                                        await interaction.followup.send(
                                             embed=discord.Embed(
-                                                title=f"✅ 기록 등록 완료 - `#{request_id}`",
-                                                description=f"""
-- **신청자** : {self.uiddata[request_id]['username'].display_name} ({self.uiddata[request_id]['username'].name})
-- **마크 닉네임** : {self.uiddata[request_id]['mcname']}
-- **트랙명** : {self.uiddata[request_id]['track']}
-- **기록** : {self.uiddata[request_id]['record']}
-- **탑승 카트** : {self.uiddata[request_id]['kart']}
-- **엔진** : {self.uiddata[request_id]['engine']}
-- **모드** : {self.uiddata[request_id]['mode']}
-- **영상** : {self.uiddata[request_id]['youtubevideo']}""",
-                                            color=EmbedColor.GREEN,
+                                                title="✅ 등록 완료",
+                                                description=f"요청 `#{request_id}`을 등록하였습니다.",
+                                                color=EmbedColor.GREEN,
                                             ),
-                                            view=discord.ui.View(),
+                                            ephemeral=True,
                                         )
+                                        await asyncio.sleep(DELAY_TO_DELETE) # 5초 뒤에 등록 요청 메세지 삭제
+                                        await interaction.delete_original_response()
                                         break
                                     else:
                                         await interaction.followup.send(
