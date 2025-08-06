@@ -556,6 +556,13 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
                         return "'" + value
                     return value
 
+                def time_str_to_seconds(time_str: str) -> float:
+                    # "01:12.111" → 분,초,밀리초로 분리
+                    minutes, sec_ms = time_str.split(":")
+                    seconds, ms = sec_ms.split(".")
+                    
+                    return int(minutes) * 60 + int(seconds) + int(ms) / 1000
+
                 try:
                     uiddata = self.uiddata.get(request_id)
                     if not uiddata:
@@ -582,31 +589,12 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
                         sheet = self.doc.worksheet(track_name)
 
                         for i in range(2, self.maxranking+1):
-                            if sheet.acell(f"A{i}").value is None or sheet.acell(f"A{i}").value == mcname:
                                 # 기록을 삽입하거나 덮어쓰기
                                 columns = ("A", "B", "C", "D", "E", "F")
                                 values = [mcname, record, kartbody, kartengine, str(mode_num), youtubevideo]
-                                # 기존 기록이 더 빠르면 등록 거절
-                                if sheet.acell(f"A{i}").value == None:
-                                        await self.send_dm_and_log(interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, mode)
-                                        for col, value in zip(columns, values):
-                                            sheet.update_acell(f"{col}{i}", escape_formula(value))
-                                        sort_range = f"{columns[0]}2:{columns[-1]}{self.maxranking}"
-                                        sheet.sort((2, "asc"), range=sort_range)
-                                        await interaction.followup.send(
-                                            embed=discord.Embed(
-                                                title="✅ 등록 완료",
-                                                description=f"요청 `#{request_id}`을 등록하였습니다.",
-                                                color=EmbedColor.GREEN,
-                                            ),
-                                            ephemeral=True,
-                                        )
-                                        await asyncio.sleep(DELAY_TO_DELETE) # 5초 뒤에 등록 요청 메세지 삭제
-                                        await interaction.delete_original_response()
-                                        break
-
-                                elif sheet.acell(f"E{i}").value == mode_num and sheet.acell(f"A{i}").value == mcname:
-                                    if sheet.acell(f'B{i}').value > record:
+                                # 엔진 같고 모드 같고 닉네임 같고
+                                if sheet.acell(f"D{i}").value == kartengine and sheet.acell(f"E{i}").value == str(mode_num) and sheet.acell(f"A{i}").value == mcname:
+                                    if (time_str_to_seconds(sheet.acell(f'B{i}').value) > time_str_to_seconds(record)):
                                         await self.send_dm_and_log(interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, mode)
                                         for col, value in zip(columns, values):
                                             sheet.update_acell(f"{col}{i}", escape_formula(value))
@@ -660,9 +648,27 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
                                         )
                     )
                                     break
+                            
+                                elif sheet.acell(f"A{i}").value == None:
+                                        await self.send_dm_and_log(interaction, user, username, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, mode)
+                                        for col, value in zip(columns, values):
+                                            sheet.update_acell(f"{col}{i}", escape_formula(value))
+                                        sort_range = f"{columns[0]}2:{columns[-1]}{self.maxranking}"
+                                        sheet.sort((2, "asc"), range=sort_range)
+                                        await interaction.followup.send(
+                                            embed=discord.Embed(
+                                                title="✅ 등록 완료",
+                                                description=f"요청 `#{request_id}`을 등록하였습니다.",
+                                                color=EmbedColor.GREEN,
+                                            ),
+                                            ephemeral=True,
+                                        )
+                                        await asyncio.sleep(DELAY_TO_DELETE) # 5초 뒤에 등록 요청 메세지 삭제
+                                        await interaction.delete_original_response()
+                                        break
+                                else:
+                                    continue
 
-                            else:
-                                continue
 
                     else:
                         await interaction.followup.send(
