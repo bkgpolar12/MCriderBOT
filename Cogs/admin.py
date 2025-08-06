@@ -153,7 +153,7 @@ class Admin(commands.Cog):
         app_commands.Choice(name="(더미) GEAR", value="GEAR"),
     ])
     async def show_rank(self, interaction: discord.Interaction, track_name: str, kartengine: app_commands.Choice[str], toktoki: app_commands.Choice[str],
-team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_commands.Choice[str], numb: int = 1):
+team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_commands.Choice[str], numb: discord.app_commands.Range[int, 1] = 1):
         user_id = interaction.user.id
         if self.is_on_cooldown(user_id):
             return await interaction.response.send_message(
