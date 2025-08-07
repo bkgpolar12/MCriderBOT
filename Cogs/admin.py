@@ -11,6 +11,7 @@ import time
 from dotenv import load_dotenv
 import os
 import asyncio
+import Paginator
 
 
 async def setup(bot):
@@ -151,8 +152,8 @@ class Admin(commands.Cog):
         app_commands.Choice(name="(더미) BOAT", value="BOAT"),
         app_commands.Choice(name="(더미) GEAR", value="GEAR"),
     ])
-    async def show_rank(self, interaction: discord.Interaction, track_name: str, numb: int, kartengine: app_commands.Choice[str], toktoki: app_commands.Choice[str],
-team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_commands.Choice[str]):
+    async def show_rank(self, interaction: discord.Interaction, track_name: str, kartengine: app_commands.Choice[str], toktoki: app_commands.Choice[str],
+team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_commands.Choice[str], numb: discord.app_commands.Range[int, 1] = 1):
         user_id = interaction.user.id
         if self.is_on_cooldown(user_id):
             return await interaction.response.send_message(
@@ -218,15 +219,18 @@ team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_c
 
             mode_num_str = str(mode_num)  # 비교를 위해 문자열로 변환
 
-            rank = ((numb - 1) * 5)
-            i = 1 + ((numb - 1) * 5)
+            # 어떻게든 되겠지 뭐        
+            i = 1
+            # 얘는 대충 설명에 순위 넣을 때 + 5로 딱 나누어 떨어질 때 마다 임베드 나누기
             count = 0
+            # 얘는 대충 contentlist가 남았을 때 (count 변수가 5의 배수로 딱 떨어지면 contentlist의 내용물이 비어짐) 제목에 순위 넣을려고 만든 거
+            x = 0
+
+            # 임베드 페이지들이 모이는 공간
+            embeds = []
 
             # i는 실제 시트에서 2번째 행부터 시작 (헤더 생략)
             for row_idx in range(i, len(all_data)):
-                if count >= 5:
-                    break
-
                 row = all_data[row_idx]
                 if len(row) < 6:
                     continue  # 비정상 데이터 무시
@@ -234,7 +238,7 @@ team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_c
                 if row[0] and row[4] == mode_num_str and (row[3] == kartengine.value or kartengine.value == "전체"):
                     count += 1
                     contentlist += f'''
-- **순위** : {rank + count}등 
+- **순위** : {count}등 
 - **닉네임** : {row[0]}
 - **기록** : {row[1]}
 - **탑승 카트** : {row[2]} 
@@ -242,17 +246,43 @@ team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_c
 - **모드** : {mode}
 - **영상** : {row[5]}\n\n'''
 
-            if not contentlist:
-                contentlist = "⚠️ 표시할 데이터가 없습니다."
+                # 한 임베드의 설명 안에 5개의 기록이 들어가 있는지
+                if count % 5 == 0:
+                    x = count + 1
+                    # 임베드 저장
+                    embeds.append(
+                        discord.Embed(
+                            title=f"🕐 {track_name} 순위 ({count - 4}등 ~ {count}등)",
+                            description=contentlist,
+                            color=EmbedColor.BLUE,
+                        )
+                    )
+                    # 내용 초기화
+                    contentlist = ""
 
-            await interaction.followup.send(
-                embed=discord.Embed(
-                    title=f"🕐 {track_name} 순위 ({1+((numb-1)*5)}등 ~ {5+((numb-1)*5)}등)",
-                    description=contentlist + f"\n {numb} 페이지",
-                    color=EmbedColor.BLUE,
-                ),
-                ephemeral=True,
-            )
+
+            if contentlist:
+                embeds.append(
+                    discord.Embed(
+                        title=f"🕐 {track_name} 순위 ({x}등 ~ {count}등)",
+                        description=contentlist,
+                        color=EmbedColor.BLUE,
+                    )
+                )
+
+            if not len(embeds):
+                return await interaction.followup.send(
+                    embed=discord.Embed(
+                        title=f"🕐 {track_name} 순위",
+                        description="⚠️ 표시할 데이터가 없습니다.",
+                        color=EmbedColor.BLUE,
+                    )
+                )
+                
+            if numb > len(embeds):
+                numb = len(embeds)
+
+            await Paginator.Simple(InitialPage=numb-1).start(interaction, pages=embeds)
 
         except Exception as e:
             return await interaction.followup.send(
