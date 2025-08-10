@@ -13,32 +13,183 @@ import os
 import asyncio
 import Paginator
 
-
-async def setup(bot):
-    await bot.add_cog(Admin(bot))
+engine_names = [
+    "X", "V1", "EX", "JIU", "NEW", "Z7", "PRO", "A2", "1.0",
+    "N1", "KEY", "MK", "BOAT", "GEAR"
+]
+json_key_path = os.environ.get('REACT_JSON_KEY_PATH')
+gc = gspread.service_account(filename=json_key_path) # 서비스 계정의 키
+sheet_url = os.environ.get('REACT_SHEET_URL') #스프레드시트 url
+doc = gc.open_by_url(sheet_url)
+sheet = doc.worksheet("포레스트 통나무") #시트 기본값
+track_sheets = doc.worksheets()
+tracks = [worksheet.title for worksheet in track_sheets]
 
 load_dotenv()
+
+class AddRecordOptionView(discord.ui.View):
+    def __init__(self, author_interaction: discord.Interaction, uid, uiddata, parent):
+        self.author_interaction = author_interaction  # Interaction 객체
+        self.uid = uid  # UID 값
+        self.uiddata = uiddata  # UID 데이터
+        self.parent = parent
+        super().__init__(timeout=None)
+        self.options = [
+            ["톡톡이 모드", False],
+            ["팀전 모드", False],
+            ["무한 부스터 모드", False],
+            ["벽 충돌 페널티 모드", False]
+        ]
+        # 각 옵션에 대해 토글 버튼 추가
+        for idx, (name, value) in enumerate(self.options):
+            button = discord.ui.Button(
+                style=discord.ButtonStyle.success if value else discord.ButtonStyle.secondary,
+                label=f"{name} : {'⭕' if value else '❌'}",
+                custom_id=f"{idx}"
+            )
+            button.callback = self.update_option
+            self.add_item(button)
+
+        submit_button = discord.ui.Button(
+            label="제출",
+            style=discord.ButtonStyle.primary,
+        )
+        submit_button.callback = self.submit_option
+        self.add_item(submit_button)
+
+    async def submit_option(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        try:
+            mode_num = ["1" if option[1] else "0" for option in self.options]
+            self.uiddata['mode_num'] = mode_num
+            if all(num == "0" for num in mode_num):
+                mode = "기본"
+            else:
+                mode = ", ".join(
+                    filter(
+                        None, 
+                        [
+                            "톡톡이 모드" if mode_num[0] == "1" else "",
+                            "팀전 모드" if mode_num[1] == "1" else "",
+                            "무한 부스터 모드" if mode_num[2] == "1" else "",
+                            "벽 충돌 페널티 모드" if mode_num[3] == "1" else "",
+                        ]
+                    )
+                )
+            self.uiddata['mode'] = mode
+            self.parent.uiddata[self.uid] = self.uiddata
+
+            # 채널 확인 및 메시지 전송
+            verifychannel = os.environ.get('REACT_VERIFYCHANNEL')
+            if not verifychannel or int(verifychannel) == 0:
+                return await interaction.followup.send(
+                    embed=discord.Embed(
+                        title="❌ 신청 실패",
+                        description="관리자가 기록 등록 메시지가 전송될 채널을 지정하지 않았습니다. 이 문제를 해결하기 위해 관리자에게 문의하세요.",
+                        color=EmbedColor.RED,
+                    ),
+                    ephemeral=True
+                )
+
+            channel = self.parent.client.get_channel(int(verifychannel))
+            if not channel:
+                return await interaction.followup.send(
+                    embed=discord.Embed(
+                        title="❌ 신청 실패",
+                        description="지정된 채널을 찾을 수 없습니다.",
+                        color=EmbedColor.RED,
+                    ),
+                    ephemeral=True,
+                )
+
+                    # 채널에 기록 신청 전송
+            try:
+                view = discord.ui.View().add_item(
+                    discord.ui.Button(
+                        custom_id=CustomID.make_deny_record(self.uid),
+                        style=discord.ButtonStyle.danger,
+                        label="거절",
+                    ),
+                ).add_item(
+                    discord.ui.Button(
+                        custom_id=CustomID.make_verify_record(self.uid),
+                        style=discord.ButtonStyle.success,
+                        label="등록",
+                    ),
+                )
+            except Exception as e:
+                print("VIEW ERROR:", type(e), e)
+                view = None  # view 생성에 실패하면 None으로 설정
+
+            await channel.send(
+                embed=discord.Embed(
+                    title=f"🔔 기록 등록 신청 - `#{self.uid}`",
+                    description=f"""
+- **신청자** : {self.parent.uiddata[self.uid]['username'].display_name} ({self.parent.uiddata[self.uid]['username'].name})
+- **마크 닉네임** : {self.parent.uiddata[self.uid]['mcname']}
+- **트랙명** : {self.parent.uiddata[self.uid]['track']}
+- **기록** : {self.parent.uiddata[self.uid]['record']}
+- **탑승 카트** : {self.parent.uiddata[self.uid]['kart']}
+- **엔진** : {self.parent.uiddata[self.uid]['engine']}
+- **모드** : {self.parent.uiddata[self.uid]['mode']}
+- **영상** : {self.parent.uiddata[self.uid]['youtubevideo']}""",
+                    color=EmbedColor.YELLOW,
+                ),
+                view=view,          # 위에서 에러가 발생하면 None (버튼 없이 전송됨)
+                mention_author=False,
+            )
+
+            # 사용자에게 신청 완료 메시지 전송
+            await self.author_interaction.followup.send(
+                embed=discord.Embed(
+                    title="✅ 신청 완료",
+                    description="관리자에게 요청이 전송되었습니다.",
+                    color=EmbedColor.GREEN,
+                ),
+                ephemeral=True,
+            )
+        except Exception as e:
+            await interaction.followup.send(
+                embed=discord.Embed(
+                    title="❌ 예외 발생",
+                    description=f"오류가 발생했습니다: `{type(e).__name__}`\n{str(e)}",
+                    color=EmbedColor.RED,
+                ),
+                ephemeral=True,
+            )
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author_interaction.user.id:
+            await interaction.response.send_message(
+                embed=discord.Embed(title="❌ 오류", description="명령어 사용자만 누를 수 있습니다.", color=EmbedColor.RED),
+                ephemeral=True,
+            )
+            return False
+        return True
+
+    async def update_option(self, interaction: discord.Interaction):
+        # interaction에서 누른 버튼 custiom_id 추출
+        idx = int(interaction.data['custom_id'])
+        self.options[idx][1] = not self.options[idx][1]  # 토글 값 변경
+        button = self.children[idx]
+        button.style = discord.ButtonStyle.success if self.options[idx][1] else discord.ButtonStyle.secondary
+        button.label = f"{self.options[idx][0]} : {'⭕' if self.options[idx][1] else '❌'}"
+        await interaction.response.edit_message(view=self)
+
+
+
 
 class Admin(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client = client #디스코드 봇 모델
         self.uiddata = {} #정보들이 저장되는 딕셔너리
         self.uid = 0
-        self.json_key_path = os.environ.get('REACT_JSON_KEY_PATH')
-        self.gc = gspread.service_account(filename=self.json_key_path) # 서비스 계정의 키
-
-        self.sheet_url = os.environ.get('REACT_SHEET_URL') #스프레드시트 url
-        self.doc = self.gc.open_by_url(self.sheet_url)
-        self.sheet = self.doc.worksheet("포레스트 통나무") #시트 기본값
-        self.track_sheets = self.doc.worksheets()
-        self.tracks = [worksheet.title for worksheet in self.track_sheets]
         self.verifychannel = int(os.environ.get('REACT_VERIFYCHANNEL'))
         self.verifierrole = int(os.environ.get('REACT_VERIFIER_ROLD_ID'))
         self.cooldowns = {}  # 사용자 ID별 마지막 사용 시간 저장
 
         #랭킹 한계
         self.maxranking = 2001 #2000등 + 1
-
 
         # 기능
         self.verify_log = True # 로그 남기기
@@ -50,17 +201,6 @@ class Admin(commands.Cog):
         expired_keys = [key for key, data in self.uiddata.items() if now - data.get("timestamp", now) > expire_seconds]
         for key in expired_keys:
             del self.uiddata[key]
-
-    def is_on_cooldown(self, user_id: int, cooldown_time: float = 5.0) -> bool:
-        """사용자가 쿨타임 중인지 확인"""
-        now = time.time()
-        if user_id in self.cooldowns:
-            return now - self.cooldowns[user_id] < cooldown_time
-        return False
-
-    def update_cooldown(self, user_id: int):
-        """쿨타임 갱신"""
-        self.cooldowns[user_id] = time.time()
 
 
     @lru_cache(maxsize=128)
@@ -74,25 +214,16 @@ class Admin(commands.Cog):
         return None
 
 
-
     @app_commands.command(name="asc")
-    async def ascc(self, interaction: discord.Interaction, track_name: str, toktoki: app_commands.Choice[str]):
+    @app_commands.checks.cooldown(1, 5)
+    async def ascc(self, interaction: discord.Interaction, track_name: str):
         """[베리파이어 전용] 기록을 오름차순으로 정리합니다."""
         # 권한 체크
         if not any(role.id == int(self.verifierrole) for role in interaction.user.roles):
             return await interaction.response.send_message("❌ 당신은 이 명령어를 사용할 권한이 없습니다.", ephemeral=True)
 
-        # 쿨다운 체크
-        user_id = interaction.user.id
-        if self.is_on_cooldown(user_id):
-            return await interaction.response.send_message(
-                embed=discord.Embed(title="⏳ 잠시만요!", description="명령어는 5초 간격으로만 사용할 수 있습니다.", color=EmbedColor.RED),
-                ephemeral=True,
-            )
-        self.update_cooldown(user_id)
-
         # 트랙 존재 여부 체크
-        if track_name not in self.tracks:
+        if track_name not in tracks:
             return await interaction.response.send_message(
                 embed=discord.Embed(title="❌ 오류", description="존재하지 않는 트랙입니다.", color=EmbedColor.RED),
                 ephemeral=True,
@@ -112,7 +243,25 @@ class Admin(commands.Cog):
         )
 
 
+    @app_commands.command(name="이펭귄")
+    @app_commands.checks.cooldown(1, 5)
+    async def penguin(self, interaction: discord.Interaction):
+        """이펭귄에 대한 모든 유저들의 생각"""
+        await interaction.response.send_message(
+            content="# 흉물",
+            ephemeral=True
+        )
+        
+
+    async def track_autocomplete(self, interaction: discord.Interaction, current: str):
+        return [
+        app_commands.Choice(name=track, value=track)
+        for track in tracks if current.lower() in track.lower()
+        ][:25]  # 최대 25개
+    
     @app_commands.command(name="showranking")
+    @app_commands.checks.cooldown(1, 5)
+    @app_commands.autocomplete(track_name=track_autocomplete)
     @app_commands.rename(track_name="트랙이름", numb="페이지", kartengine="엔진", toktoki="톡톡이모드", team="팀전모드", infinity="무한부스터모드", crash="벽충돌페널티모드")
     @app_commands.choices(toktoki=[
         app_commands.Choice(name="활성화", value="1"),
@@ -131,40 +280,14 @@ class Admin(commands.Cog):
         app_commands.Choice(name="비활성화", value="0"),
     ])
     @app_commands.choices(kartengine=[
-        # 전체
         app_commands.Choice(name="전체", value="전체"),
+    *[app_commands.Choice(name=f"(더미) {name}", value=name) if idx >= 9 else app_commands.Choice(name=name, value=name) for idx, name in enumerate(engine_names)]
+    
 
-        # 엔진
-        app_commands.Choice(name="X", value="X"),
-        app_commands.Choice(name="V1",value="V1"),
-        app_commands.Choice(name="EX", value="EX"),
-        app_commands.Choice(name="JIU", value="JIU"),
-        app_commands.Choice(name="NEW", value="NEW"),
-        app_commands.Choice(name="Z7", value="Z7"),
-        app_commands.Choice(name="PRO",value="PRO"),
-        app_commands.Choice(name="A2",value="A2"),
-        app_commands.Choice(name="1.0", value="1.0"),
-        
-        # 더미 엔진
-        app_commands.Choice(name="(더미) N1", value="N1"),
-        app_commands.Choice(name="(더미) KEY", value="KEY"),
-        app_commands.Choice(name="(더미) MK", value="MK"),
-        app_commands.Choice(name="(더미) BOAT", value="BOAT"),
-        app_commands.Choice(name="(더미) GEAR", value="GEAR"),
     ])
     async def show_rank(self, interaction: discord.Interaction, track_name: str, kartengine: app_commands.Choice[str], toktoki: app_commands.Choice[str],
 team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_commands.Choice[str], numb: discord.app_commands.Range[int, 1] = 1):
         user_id = interaction.user.id
-        if self.is_on_cooldown(user_id):
-            return await interaction.response.send_message(
-                embed=discord.Embed(
-                    title="⏳ 잠시만요!",
-                    description="명령어는 5초 간격으로만 사용할 수 있습니다.",
-                    color=EmbedColor.RED,
-                ),
-                ephemeral=True,
-            )
-        self.update_cooldown(user_id)
 
         # 모드 번호
         mode_num = [] #톡톡이 팀 무부 벽
@@ -202,7 +325,7 @@ team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_c
             
         await interaction.response.defer(ephemeral=True)
 
-        if track_name not in self.tracks:
+        if track_name not in tracks:
             return await interaction.followup.send(
                 embed=discord.Embed(
                     title="❌ 오류",
@@ -336,74 +459,41 @@ team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_c
                     text="관리자 전용 메시지입니다. 유출하지 마십시오."
                 )
             )
-
-
+        
+    async def track_autocomplete(self, interaction: discord.Interaction, current: str):
+        return [
+        app_commands.Choice(name=track, value=track)
+        for track in tracks if current.lower() in track.lower()
+        ][:25]  # 최대 25개
 
 
     @app_commands.command(name="addrecord")
+    @app_commands.autocomplete(track_name=track_autocomplete)
+    @app_commands.choices(
+        kartengine=[
+                app_commands.Choice(name=f"(더미) {name}", value=name) if idx >= 9 else app_commands.Choice(name=name, value=name)
+                for idx, name in enumerate(engine_names)
+            ]
+        )
     @app_commands.rename(
         mcname="마크닉네임",
         track_name="트랙명",
         record="기록",
         kartbody="탑승카트",
         kartengine="엔진",
-        youtubevideo="영상",
-        toktoki="톡톡이모드",
-        team="팀전모드",
-        infinity="무한부스터모드",
-        crash="벽충돌페널티모드"
+        youtubevideo="영상"
     )
-    @app_commands.choices(toktoki=[
-        app_commands.Choice(name="활성화", value="1"),
-        app_commands.Choice(name="비활성화", value="0"),
-    ])
-    @app_commands.choices(team=[
-        app_commands.Choice(name="활성화", value="1"),
-        app_commands.Choice(name="비활성화", value="0"),
-    ])
-    @app_commands.choices(infinity=[
-        app_commands.Choice(name="활성화", value="1"),
-        app_commands.Choice(name="비활성화", value="0"),
-    ])
-    @app_commands.choices(crash=[
-        app_commands.Choice(name="활성화", value="1"),
-        app_commands.Choice(name="비활성화", value="0"),
-    ])
-    @app_commands.choices(kartengine=[
-        app_commands.Choice(name="X", value="X"),
-        app_commands.Choice(name="V1",value="V1"),
-        app_commands.Choice(name="EX", value="EX"),
-        app_commands.Choice(name="JIU", value="JIU"),
-        app_commands.Choice(name="NEW", value="NEW"),
-        app_commands.Choice(name="Z7", value="Z7"),
-        app_commands.Choice(name="PRO",value="PRO"),
-        app_commands.Choice(name="A2",value="A2"),
-        app_commands.Choice(name="1.0", value="1.0"),
-        
-        # 더미 엔진
-        app_commands.Choice(name="(더미) N1", value="N1"),
-        app_commands.Choice(name="(더미) KEY", value="KEY"),
-        app_commands.Choice(name="(더미) MK", value="MK"),
-        app_commands.Choice(name="(더미) BOAT", value="BOAT"),
-        app_commands.Choice(name="(더미) GEAR", value="GEAR"),
-    ])
-    async def add_record(self, interaction: discord.Interaction, mcname: str, track_name: str, record: str, kartbody: str, kartengine: app_commands.Choice[str], youtubevideo: str,
-toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_commands.Choice[str]):
+    async def add_record(
+        self,
+        interaction: discord.Interaction,
+        mcname: str, 
+        track_name: str,
+        record: str, 
+        kartbody: str, 
+        kartengine: app_commands.Choice[str], 
+        youtubevideo: str,
+    ):
         """기록을 신청합니다."""
-        user_id = interaction.user.id
-
-        if self.is_on_cooldown(user_id):
-            return await interaction.response.send_message(
-                embed=discord.Embed(
-                    title="⏳ 잠시만요!",
-                    description="명령어는 5초 간격으로만 사용할 수 있습니다.",
-                    color=EmbedColor.RED,
-                ),
-                ephemeral=True,
-            )
-
-        self.update_cooldown(user_id)
-        self.cleanup_old_requests()
 
         # 유효성 검사 함수
         def validate_input():
@@ -416,15 +506,14 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
             if len(kartbody) > 20:
                 return "탑승 카트 이름은 20글자 이하여야 합니다."
 
-            if track_name not in self.tracks:
+            if track_name not in tracks:
                 return "존재하지 않은 트랙이거나 트랙 이름이 올바르지 않습니다."
 
             if not self.get_uuid(mcname):
                 return "이 이름을 가진 마인크래프트 유저를 찾을 수 없습니다."
 
             return None
-
-        # 입력값 검증
+        
         validation_error = validate_input()
         if validation_error:
             return await interaction.response.send_message(
@@ -434,52 +523,26 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
                     color=EmbedColor.RED,
                 ),
                 ephemeral=True,
+            ) 
+        
+        embed = discord.Embed(
+                title="🔔 새 기록 등록",
+                description=f"""
+:bust_in_silhouette: **마크 닉네임** - `{mcname}`
+:map: **트랙명** - `{track_name}`
+:stopwatch: **기록** - `{record}`
+:red_car: **카트** - `{kartbody} {kartengine.value}`
+:arrow_forward: **유튜브 링크** - {youtubevideo}
+""",
+                color=EmbedColor.YELLOW,
             )
 
-        # 모드 번호
-        mode_num = [] #톡톡이 팀 무부 벽 순서
+        
+        await interaction.response.defer(ephemeral=True)
 
-        #톡톡이 모드
-        if toktoki.value == "1":
-            mode_num.insert(0, "1")
-        else:
-            mode_num.insert(0, "0")
-        #팀전
-        if team.value == "1":
-            mode_num.insert(1, "1")
-        else:
-            mode_num.insert(1, "0")
-        #무부
-        if infinity.value == "1":
-            mode_num.insert(2, "1")
-        else:
-            mode_num.insert(2, "0")
-        #벽 충돌 페널티
-        if crash.value == "1":
-            mode_num.insert(3, "1")
-        else:
-            mode_num.insert(3, "0")
-
-        print(mode_num)
-
-        if all(num == "0" for num in mode_num):
-            mode = "기본"
-        else:
-            mode = ", ".join(filter(None, [
-        "톡톡이 모드" if mode_num[0] == "1" else "",
-        "팀전 모드" if mode_num[1] == "1" else "",
-        "무한 부스터 모드" if mode_num[2] == "1" else "",
-        "벽 충돌 페널티 모드" if mode_num[3] == "1" else "",
-    ]))
-
-        print(mode)
-
-        # UID 생성 및 기록 저장
+                # UID 생성 및 기록 저장
         uid = random.randint(1, 100000000)
-        while uid in self.uiddata:
-            uid = random.randint(1, 100000000)
-
-        self.uiddata[uid] = {
+        uiddata = {
             "username": interaction.user,
             "mcname": mcname,
             "track": track_name,
@@ -487,80 +550,17 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
             "kart": kartbody,
             "engine": kartengine.value,
             "youtubevideo": youtubevideo,
-            "mode_num": mode_num,
-            "mode": mode,
             "timestamp": time.time(),
         }
-
-
-        # 채널 확인 및 메시지 전송
-        verifychannel = os.environ.get('REACT_VERIFYCHANNEL')
-        if not verifychannel or int(verifychannel) == 0:
-            return await interaction.response.send_message(
-                embed=discord.Embed(
-                    title="❌ 신청 실패",
-                    description="관리자가 기록 등록 메시지가 전송될 채널을 지정하지 않았습니다. 이 문제를 해결하기 위해 관리자에게 문의하세요.",
-                    color=EmbedColor.RED,
-                ),
-                ephemeral=True
-            )
-
-        channel = self.client.get_channel(int(verifychannel))
-        if not channel:
-            return await interaction.response.send_message(
-                embed=discord.Embed(
-                    title="❌ 신청 실패",
-                    description="지정된 채널을 찾을 수 없습니다.",
-                    color=EmbedColor.RED,
-                ),
-                ephemeral=True,
-            )
-
-                # 채널에 기록 신청 전송
-        try:
-            view = discord.ui.View().add_item(
-                discord.ui.Button(
-                    custom_id=CustomID.make_deny_record(uid),
-                    style=discord.ButtonStyle.danger,
-                    label="거절",
-                ),
-            ).add_item(
-                discord.ui.Button(
-                    custom_id=CustomID.make_verify_record(uid),
-                    style=discord.ButtonStyle.success,
-                    label="등록",
-                ),
-            )
-        except Exception as e:
-            print("VIEW ERROR:", type(e), e)
-            view = None  # view 생성에 실패하면 None으로 설정
-
-        await channel.send(
-            embed=discord.Embed(
-                title=f"🔔 기록 등록 신청 - `#{uid}`",
-                description=f"""
-- **신청자** : {self.uiddata[uid]['username'].display_name} ({self.uiddata[uid]['username'].name})
-- **마크 닉네임** : {self.uiddata[uid]['mcname']}
-- **트랙명** : {self.uiddata[uid]['track']}
-- **기록** : {self.uiddata[uid]['record']}
-- **탑승 카트** : {self.uiddata[uid]['kart']}
-- **엔진** : {self.uiddata[uid]['engine']}
-- **모드** : {self.uiddata[uid]['mode']}
-- **영상** : {self.uiddata[uid]['youtubevideo']}""",
-                color=EmbedColor.YELLOW,
+        await interaction.followup.send(
+            embed=embed,
+            view=AddRecordOptionView(
+                author_interaction=interaction,
+                uid=uid,
+                uiddata=uiddata,
+                parent=self
             ),
-            view=view,          # 위에서 에러가 발생하면 None (버튼 없이 전송됨)
-            mention_author=False,
-        )
-
-        # 사용자에게 신청 완료 메시지 전송
-        await interaction.response.send_message(
-            embed=discord.Embed(
-                title="✅ 신청 완료",
-                description="관리자에게 요청이 전송되었습니다.",
-                color=EmbedColor.GREEN,
-            ),
-            ephemeral=True,
+            ephemeral=True       
         )
 
 
@@ -705,8 +705,8 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
                 mode_num = uiddata["mode_num"]
                 mode = uiddata["mode"]
 
-                if track_name in self.tracks:
-                    sheet = self.doc.worksheet(track_name)
+                if track_name in tracks:
+                    sheet = doc.worksheet(track_name)
                     all_rows = sheet.get_all_values()  # 한 번만 API 호출
                     columns = ("A", "B", "C", "D", "E", "F")
                     values = [mcname, record, kartbody, kartengine, str(mode_num), youtubevideo]
@@ -820,3 +820,6 @@ toktoki: app_commands.Choice[str], team: app_commands.Choice[str], infinity: app
             await interaction.response.send_modal(
                 DenyModal(request_id, uiddata, self.deny_dm, self.verify_log, self.client)
             )
+
+async def setup(bot):
+    await bot.add_cog(Admin(bot))
