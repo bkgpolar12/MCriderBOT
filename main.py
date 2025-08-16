@@ -7,11 +7,20 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def parse_owner_id() -> list[int]:
+    owners: list[int] = []
+    id_string = os.environ.get("REACT_OWNERS")
+    for id in id_string.split(","):
+       owners.append(int(id.strip()))
+    return owners
+
+
 intents = discord.Intents.all()
 client = commands.Bot(
     command_prefix="/",
     intents=intents,
-    owner_ids=[int(os.environ.get('REACT_OWNER1')), int(os.environ.get('REACT_OWNER2')), int(os.environ.get('REACT_OWNER3'))],
+    owner_ids=parse_owner_id(),
 )
 
 
