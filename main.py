@@ -11,7 +11,6 @@ intents = discord.Intents.all()
 client = commands.Bot(
     command_prefix="/",
     intents=intents,
-    owner_ids=[int(os.environ.get('REACT_OWNER1')), int(os.environ.get('REACT_OWNER2')), int(os.environ.get('REACT_OWNER3'))],
 )
 
 
@@ -53,7 +52,6 @@ async def ready_cogs():
 
 
 @client.command(name="싱크", aliases=["sync", "ㅅㅋ", "tz"])
-@commands.is_owner()
 @commands.has_role("관리자")
 async def setup(interaction: discord.Interaction):
     try:
@@ -74,7 +72,6 @@ async def setup(interaction: discord.Interaction):
 
 
 @client.command(aliases=["리로드", "ㄹㄹㄷ", "ffe"])
-@commands.is_owner()
 @commands.has_role("관리자")
 async def reload(interaction: discord.Interaction):
     LoadResult = await ready_cogs()
