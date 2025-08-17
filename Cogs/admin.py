@@ -187,6 +187,10 @@ class Admin(commands.Cog):
         self.verifychannel = int(os.environ.get('REACT_VERIFYCHANNEL'))
         self.verifierrole = int(os.environ.get('REACT_VERIFIER_ROLD_ID'))
         self.cooldowns = {}  # 사용자 ID별 마지막 사용 시간 저장
+        self.sheet_url = os.environ.get('REACT_SHEET_URL') #스프레드시트 url
+        self.doc = gc.open_by_url(sheet_url) #스프레드시트 열기
+        self.sheet = doc.worksheet("포레스트 통나무") #시트 기본값
+        self.track_sheets = doc.worksheets()
 
         #랭킹 한계
         self.maxranking = 2001 #2000등 + 1
@@ -343,7 +347,7 @@ team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_c
             mode_num_str = str(mode_num)  # 비교를 위해 문자열로 변환
 
             # 어떻게든 되겠지 뭐        
-            i = 1
+            i = 2
             # 얘는 대충 설명에 순위 넣을 때 + 5로 딱 나누어 떨어질 때 마다 임베드 나누기
             count = 0
             # 얘는 대충 contentlist가 남았을 때 (count 변수가 5의 배수로 딱 떨어지면 contentlist의 내용물이 비어짐) 제목에 순위 넣을려고 만든 거
