@@ -347,7 +347,7 @@ team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_c
             mode_num_str = str(mode_num)  # 비교를 위해 문자열로 변환
 
             # 어떻게든 되겠지 뭐        
-            i = 2
+            i = 1
             # 얘는 대충 설명에 순위 넣을 때 + 5로 딱 나누어 떨어질 때 마다 임베드 나누기
             count = 0
             # 얘는 대충 contentlist가 남았을 때 (count 변수가 5의 배수로 딱 떨어지면 contentlist의 내용물이 비어짐) 제목에 순위 넣을려고 만든 거
@@ -362,7 +362,7 @@ team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_c
                 if len(row) < 6:
                     continue  # 비정상 데이터 무시
 
-                if row[0] and row[4] == mode_num_str and (row[3] == kartengine.value or kartengine.value == "전체"):
+                if row[0] != None and row[4] == mode_num_str and (row[3] == kartengine.value or kartengine.value == "전체"):
                     count += 1
                     contentlist += f'''
 - **순위** : {count}등 
@@ -372,6 +372,8 @@ team: app_commands.Choice[str], infinity: app_commands.Choice[str], crash: app_c
 - **엔진** : {row[3]}
 - **모드** : {mode}
 - **영상** : {row[5]}\n\n'''
+                else:
+                    continue
 
                 # 한 임베드의 설명 안에 5개의 기록이 들어가 있는지
                 if count % 5 == 0:
