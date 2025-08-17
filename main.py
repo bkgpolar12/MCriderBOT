@@ -88,6 +88,7 @@ async def reload(interaction: discord.Interaction):
     )
 
 
+
 @client.event
 async def on_ready():
     print(f"✅ 로그인: {client.user.name} ({client.user.id})")
