@@ -13,9 +13,9 @@ import os, ast
 import asyncio
 import Paginator
 
-# 정상 엔진 리스트
+# 일반 엔진 리스트
 normal_engines = [
-    "X", "V1", "EX", "JIU", "NEW", "Z7", "PRO", "A2", "1.0","RALLY"
+    "X", "V1", "EX", "JIU", "NEW", "Z7", "PRO", "A2", "1.0", "RALLY"
 ]
 
 # 더미 엔진 리스트
@@ -670,6 +670,12 @@ https://github.com/bkgpolar12/MCriderBOT''',
                                     await send_fail_dm(username_obj, request_id, mcname, track_name, record, cell_record, kartbody, kartengine, mode, youtubevideo)
                                     await asyncio.sleep(DELAY_TO_DELETE)
                                     await interaction.delete_original_response()
+                                    temp_sheet = doc.worksheet("RecordApplicationData")
+                                    try:
+                                        cell = temp_sheet.find(str(request_id))
+                                        temp_sheet.delete_rows(cell.row)
+                                    except Exception:
+                                        pass
                                 break
                         elif cell_mcname is None:
                             await self.send_dm_and_log(interaction, user, username_obj, request_id, mcname, track_name, record, kartbody, kartengine, youtubevideo, mode)

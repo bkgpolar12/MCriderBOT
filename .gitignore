@@ -195,3 +195,4 @@ cython_debug/
 .cursorindexingignore
 .env
 psyched-cubist.json
+.DS_Store
