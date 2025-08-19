@@ -357,6 +357,9 @@ https://github.com/bkgpolar12/MCriderBOT''',
                     )
                     contentlist = ""
             if contentlist:
+                # 0등이라 뜨는 더 방비
+                if x == 0:
+                    x += 1
                 embeds.append(
                     discord.Embed(
                         title=f"🕐 {track_name} 순위 ({x}등 ~ {count}등)",
