@@ -12,6 +12,8 @@ from dotenv import load_dotenv
 import os, ast
 import asyncio
 import Paginator
+import aiohttp
+from packaging import version as v
 
 # 일반 엔진 리스트
 normal_engines = [
@@ -31,6 +33,7 @@ sheet = doc.worksheet("포레스트 통나무")
 track_sheets = doc.worksheets()
 not_track_sheets = ast.literal_eval(os.getenv("REACT_NOTTRACK_SHEET"))
 tracks = [worksheet.title for worksheet in track_sheets if worksheet.title not in not_track_sheets]
+lpeng_image = discord.File("image/L_Peng.png", filename="L_Peng.png")
 
 load_dotenv()
 
@@ -253,17 +256,19 @@ class Admin(commands.Cog):
     async def penguin(self, interaction: discord.Interaction):
         """이펭귄에 대한 모든 유저들의 생각"""
         await interaction.response.send_message(
-            content="# 흉물",
+            content="# 흉물",file=lpeng_image,
             ephemeral=True
         )
         
-    @app_commands.command(name="credit")
+    @app_commands.command(name="info")
     @app_commands.checks.cooldown(1, 5)
-    async def penguin(self, interaction: discord.Interaction):
+    async def credit(self, interaction: discord.Interaction):
+        """봇 정보를 표시합니다."""
         await interaction.response.send_message(
-            content='''By 북극곰(BKGpolar), 미간(migan.), 헧사(hexx_4)
-
-https://github.com/bkgpolar12/MCriderBOT''',
+            content=f'''## {BotInfo.NAME}
+### 버전 : {BotInfo.VERSION}
+개발 : {BotInfo.AUTHOR}
+사이트 : {BotInfo.GITHUB_URL}''',
             ephemeral=True
         )
 

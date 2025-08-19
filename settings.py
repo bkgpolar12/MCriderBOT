@@ -23,3 +23,9 @@ class CustomID:
 
     def get_deny_record_uid(custom_id: str) -> int:
         return int(custom_id.removeprefix(CustomID.DENY_RECORD))
+    
+class BotInfo:
+    NAME = "도로주행 기능사 로봇"
+    VERSION = "1.2.0b"
+    AUTHOR = "MCriderBOT | By 북극곰(BKGpolar), 미간(migan.), 헧사(hexx_4)"
+    GITHUB_URL = "https://github.com/bkgpolar12/MCriderBOT"
