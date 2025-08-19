@@ -24,7 +24,7 @@ Made By bkgpolar12, hexx-4, Migan178
    ```bash
    pip install -r requirements.txt
    # 또는
-   pip3 install -r requirements.txt```
+   pip3 install -r requirements.txt
 
 2. 파이썬 버전 확인
 - 현재 봇이 만들어진 파이썬 버전: 3.13.6
