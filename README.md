@@ -22,7 +22,7 @@ Made By bkgpolar12, hexx-4, Migan178
 ## 봇 실행 전 준비
 1. 파이썬 버전 확인
 - 파이썬 버전 : 3.13
-3.12(requirements.txt - audioop-lts==0.2.1 제거하면 정상 작동)
+- 3.12(requirements.txt - audioop-lts==0.2.1 제거하면 정상 작동)
 
 2. 구글 스프레드시트 생성
 - 카트라이더: 마인크래프트에 있는 모든 트랙을 시트로 생성
