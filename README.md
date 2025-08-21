@@ -20,13 +20,15 @@ Made By bkgpolar12, hexx-4, Migan178
 + /showranking [트랙 이름] [엔진] [모드]
 
 ## 봇 실행 전 준비
-1. 구글 스프레드시트 생성
+1. 파이썬 버전 확인
+- 파이썬 버전 : 3.13
+
+2. 구글 스프레드시트 생성
 - 카트라이더: 마인크래프트에 있는 모든 트랙을 시트로 생성
 - 기록 등록 신청 데이터 임시 저장 시트 생성 (이름은 RecordApplicationData로 하는 것을 추천)
 - 위 시트들 외 다른 시트를 생성할 시, 트랙 시트가 아닌 경우 REACT_NOTTRACK_SHEET 리스트에 포함 시키기 (.env - REACT_NOTTRACK_SHEET)
 
-
-2. 구글 클라우드 서비스 계정 가입 및 디스코드 봇 생성
+3. 구글 클라우드 서비스 계정 가입 및 디스코드 봇 생성
 
 ### 구글 클라우드 서비스 계정
 - 스프레드시트와 파이썬 연동 목적 (서비스 키는 JSON으로 받기)
@@ -36,18 +38,16 @@ Made By bkgpolar12, hexx-4, Migan178
 - Bot - Privileged Gateway Intents - 모든 항목 활성화
 - Bot - Bot Permissions - Administrator 활성화
 
+4. .env 작성
+- .env.example을 토대로 작성
 
-
-3. 의존성 설치  
+5. 의존성 설치  
    ```bash
    pip install -r requirements.txt
    # 또는
    pip3 install -r requirements.txt
 
-4. 파이썬 버전 확인
-- 파이썬 버전 : 3.13
-
-5. 리로드 / 글로벌 명령어 반영
+6. 리로드 / 글로벌 명령어 반영
 아래 명령어 실행:
 `/ㄹㄹㄷ` `/ㅅㅋ`
 
