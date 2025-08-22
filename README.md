@@ -20,29 +20,37 @@ Made By bkgpolar12, hexx-4, Migan178
 + /showranking [트랙 이름] [엔진] [모드]
 
 ## 봇 실행 전 준비
-1. 의존성 설치  
+1. 파이썬 버전 확인
+- 파이썬 버전 : 3.13
+- 3.12(requirements.txt - audioop-lts==0.2.1 제거하면 정상 작동)
+
+2. 구글 스프레드시트 생성
+- 카트라이더: 마인크래프트에 있는 모든 트랙을 시트로 생성
+- 기록 등록 신청 데이터 임시 저장 시트 생성 (이름은 RecordApplicationData로 하는 것을 추천)
+- 위 시트들 외 다른 시트를 생성할 시, 트랙 시트가 아닌 경우 REACT_NOTTRACK_SHEET 리스트에 포함 시키기 (.env - REACT_NOTTRACK_SHEET)
+
+3. 구글 클라우드 서비스 계정 가입 및 디스코드 봇 생성
+
+### 구글 클라우드 서비스 계정
+- 스프레드시트와 파이썬 연동 목적 (서비스 키는 JSON으로 받기)
+
+### 디스코드 봇
+- OAuth2 - bot 활성화
+- Bot - Privileged Gateway Intents - 모든 항목 활성화
+- Bot - Bot Permissions - Administrator 활성화
+
+4. .env 작성
+- .env.example을 토대로 작성
+
+5. 의존성 설치  
    ```bash
    pip install -r requirements.txt
    # 또는
    pip3 install -r requirements.txt
 
-2. 파이썬 버전 확인
-- 현재 봇이 만들어진 파이썬 버전: 3.13.6
-
-3. 리로드 / 글로벌 명령어 반영
-아래 명령어를 실행하세요:
+6. 리로드 / 글로벌 명령어 반영
+아래 명령어 실행:
 `/ㄹㄹㄷ` `/ㅅㅋ`
 
-글로벌 명령어(슬래시 명령어)가 유저에게 반영되도록 합니다.
-:warning: 반영되기까지 최대 1시간 정도 소요될 수 있습니다.
-디스코드를 껐다 켜면 즉시 반영됩니다.
-
-# 작업해야 할 사항
-
-## 기록 등록 신청 데이터 임시 저장 시트 필요
-- 시트 이름: **RecordApplicationData**  
-  :warning: 시트 이름을 바꾸려면 코드 내에 시트 이름을 모두 수정해야 합니다.
-
-## 환경변수 선언 (비어있으면)
-- `.env` 안에 `REACT_NOTTRACK_SHEET` 변수를 선언할 수 있습니다.  
-- 이 변수에는 **트랙이 아닌 시트**를 포함시켜, 해당 시트가 트랙으로 취급되지 않도록 설정할 수 있습니다.
+:warning: 반영되기까지 최대 1시간 정도 소요.
+디스코드를 껐다 켜면 즉시 반영
