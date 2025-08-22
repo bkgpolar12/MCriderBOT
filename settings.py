@@ -26,6 +26,17 @@ class CustomID:
     
 class BotInfo:
     NAME = "도로주행 기능사 로봇"
-    VERSION = "1.2.0b"
+    VERSION = "v1.2.0b"
     AUTHOR = "MCriderBOT | By 북극곰(BKGpolar), 미간(migan.), 헧사(hexx_4)"
     GITHUB_URL = "https://github.com/bkgpolar12/MCriderBOT"
+    GITHUB_API = "https://api.github.com/repos/bkgpolar12/MCriderBOT/releases/latest"
+    # GITHUB_URL_TEST = "https://github.com/bkgpolar12/test"
+    # GITHUB_API_TEST = "https://api.github.com/repos/bkgpolar12/test/releases/latest"
+
+class Option: # 맞춤설정
+    latest_version_check = True  # 최신 버전 체크 여부
+    latest_version_check_interval = 12 # 시간 (단위: 시간)
+    maxranking = 2001
+    verify_log = True
+    deny_dm  = True
+    verify_dm = True

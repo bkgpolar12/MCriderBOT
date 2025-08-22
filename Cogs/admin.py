@@ -12,8 +12,8 @@ from dotenv import load_dotenv
 import os, ast
 import asyncio
 import Paginator
-import aiohttp
 from packaging import version as v
+import aiohttp
 
 # 일반 엔진 리스트
 normal_engines = [
@@ -57,6 +57,8 @@ def get_uiddata_from_sheet(uid):
         }
     except Exception:
         return None
+    
+
 
 class AddRecordOptionView(discord.ui.View):
     def __init__(self, author_interaction: discord.Interaction, uid, parent):
@@ -184,6 +186,7 @@ class AddRecordOptionView(discord.ui.View):
                 ephemeral=True,
             )
 
+
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author_interaction.user.id:
             await interaction.response.send_message(
@@ -192,6 +195,7 @@ class AddRecordOptionView(discord.ui.View):
             )
             return False
         return True
+    
 
     async def update_option(self, interaction: discord.Interaction):
         idx = int(interaction.data['custom_id'])
@@ -200,16 +204,18 @@ class AddRecordOptionView(discord.ui.View):
         button.style = discord.ButtonStyle.success if self.options[idx][1] else discord.ButtonStyle.secondary
         button.label = f"{self.options[idx][0]} : {'⭕' if self.options[idx][1] else '❌'}"
         await interaction.response.edit_message(view=self)
-
+    
+    
+    
 class Admin(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client = client
         self.verifychannel = int(os.environ.get('REACT_VERIFYCHANNEL'))
         self.verifierrole = int(os.environ.get('REACT_VERIFIER_ROLD_ID'))
-        self.maxranking = 2001
-        self.verify_log = True
-        self.deny_dm  = True
-        self.verify_dm = True
+        self.maxranking = Option.maxranking
+        self.verify_log = Option.verify_log
+        self.deny_dm  = Option.deny_dm
+        self.verify_dm = Option.verify_dm
 
     @lru_cache(maxsize=128)
     def get_uuid(self, username):
@@ -222,35 +228,7 @@ class Admin(commands.Cog):
         return None
 
 
-    @app_commands.command(name="asc")
-    @app_commands.checks.cooldown(1, 5)
-    async def ascc(self, interaction: discord.Interaction, track_name: str):
-        """[베리파이어 전용] 기록을 오름차순으로 정리합니다."""
-        # 권한 체크
-        if not any(role.id == int(self.verifierrole) for role in interaction.user.roles):
-            return await interaction.response.send_message("❌ 당신은 이 명령어를 사용할 권한이 없습니다.", ephemeral=True)
-
-        # 트랙 존재 여부 체크
-        if track_name not in tracks:
-            return await interaction.response.send_message(
-                embed=discord.Embed(title="❌ 오류", description="존재하지 않는 트랙입니다.", color=EmbedColor.RED),
-                ephemeral=True,
-            )
-
-        # 정렬 범위 설정
-        sort_range = f"A2:{self.maxranking}"
-        sort_column = 2
-
-        # 시트 정렬
-        sheet = self.doc.worksheet(track_name)
-        sheet.sort((sort_column, "asc"), range=sort_range)
-
-        return await interaction.response.send_message(
-            embed=discord.Embed(title="✅ 오름차순 정리 완료", description=f"{track_name} 시트에 오름차순 정리를 하였습니다.", color=EmbedColor.GREEN),
-            ephemeral=True,
-        )
-
-
+# 이펭귄
     @app_commands.command(name="이펭귄")
     @app_commands.checks.cooldown(1, 5)
     async def penguin(self, interaction: discord.Interaction):
@@ -260,24 +238,44 @@ class Admin(commands.Cog):
             ephemeral=True
         )
         
+
+
+
+# 봇 정보 명령어            
     @app_commands.command(name="info")
     @app_commands.checks.cooldown(1, 5)
     async def credit(self, interaction: discord.Interaction):
         """봇 정보를 표시합니다."""
+
+        async def get_latest_version() -> str | None:
+            """깃허브 최신 릴리스 버전 가져오기"""
+            async with aiohttp.ClientSession() as session:
+                async with session.get(BotInfo.GITHUB_API) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        return data.get("tag_name") # "tag_name": "v0.0.0",
+            return None
+        
+        latest = await get_latest_version()
+        updatenoti = f"\n:warning: 새로운 업데이트가 있습니다!\n적용된 버전 : `{BotInfo.VERSION}`\n최신 버전 `{latest}`" if latest and v.parse(latest.lstrip("v")) > v.parse((BotInfo.VERSION).lstrip("v")) else "\n:white_check_mark: 최신 버전입니다."
         await interaction.response.send_message(
             content=f'''## {BotInfo.NAME}
-### 버전 : {BotInfo.VERSION}
+### 버전 : {BotInfo.VERSION} {updatenoti}
+
 개발 : {BotInfo.AUTHOR}
+
 사이트 : {BotInfo.GITHUB_URL}''',
             ephemeral=True
         )
 
+# 트랙 자동완성
     async def track_autocomplete(self, interaction: discord.Interaction, current: str):
         return [
         app_commands.Choice(name=track, value=track)
         for track in tracks if current.lower() in track.lower()
         ][:25]
 
+# 트랙 순위 명령어
     @app_commands.command(name="showranking")
     @app_commands.checks.cooldown(1, 5)
     @app_commands.autocomplete(track_name=track_autocomplete)
@@ -393,6 +391,8 @@ class Admin(commands.Cog):
                 ephemeral=True,
             )
 
+
+# 등록 명령어
     @app_commands.command(name="addrecord")
     @app_commands.autocomplete(track_name=track_autocomplete)
     @app_commands.choices(
