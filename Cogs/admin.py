@@ -15,6 +15,8 @@ import Paginator
 from packaging import version as v
 import aiohttp
 from mojang import *
+from copy import deepcopy
+
 
 # 일반 엔진 리스트
 normal_engines = [
@@ -61,11 +63,11 @@ def get_uiddata_from_sheet(uid):
     
 
 
-class AddRecordOptionView(discord.ui.ActionRow):
-    def __init__(self, author_interaction: discord.Interaction, uid, client):
+class AddRecordOptionRow(discord.ui.ActionRow):
+    def __init__(self, author_interaction: discord.Interaction, uid: int, container: discord.ui.Container):
         self.author_interaction = author_interaction
         self.uid = uid
-        self.client = client
+        self.container = container
         super().__init__()
         self.options = [
             ["톡톡이 모드", False],
@@ -125,7 +127,7 @@ class AddRecordOptionView(discord.ui.ActionRow):
                     ephemeral=True
                 )
 
-            channel = self.client.get_channel(int(verifychannel))
+            channel = interaction.client.get_channel(int(verifychannel))
             if not channel:
                 return await interaction.followup.send(
                     embed=discord.Embed(
@@ -200,13 +202,13 @@ class AddRecordOptionView(discord.ui.ActionRow):
     
 
     async def update_option(self, interaction: discord.Interaction):
+        container = deepcopy(self.container)
         idx = int(interaction.data['custom_id'])
         self.options[idx][1] = not self.options[idx][1]
         button = self.children[idx]
         button.style = discord.ButtonStyle.success if self.options[idx][1] else discord.ButtonStyle.secondary
         button.label = f"{self.options[idx][0]} : {'⭕' if self.options[idx][1] else '❌'}"
-        await interaction.response.edit_message(view=self)
-    
+        await interaction.response.edit_message(view=discord.ui.LayoutView().add_item(container.add_item(self)))
     
     
 class Admin(commands.Cog):
@@ -464,23 +466,11 @@ class Admin(commands.Cog):
 :stopwatch: **기록** - `{record}`
 :red_car: **카트** - `{kartbody} {kartengine.value}`
 :arrow_forward: **유튜브 링크** - {youtubevideo}""")
-        ).add_item(
-            AddRecordOptionView(
-                author_interaction=interaction,
-                uid=uid,
-                client=self.client
-            )
         )
-        embed = discord.Embed(
-            title="🔔 새 기록 등록",
-            description=f"""
-:bust_in_silhouette: **마크 닉네임** - `{mcname}`
-:map: **트랙명** - `{track_name}`
-:stopwatch: **기록** - `{record}`
-:red_car: **카트** - `{kartbody} {kartengine.value}`
-:arrow_forward: **유튜브 링크** - {youtubevideo}
-""",
-            color=EmbedColor.YELLOW,
+        row = AddRecordOptionRow(
+            author_interaction=interaction,
+            uid=uid,
+            container=deepcopy(container)
         )
         temp_sheet = doc.worksheet("RecordApplicationData")
         temp_sheet.append_row([
@@ -497,13 +487,7 @@ class Admin(commands.Cog):
             ""   # mode
         ])
         await interaction.followup.send(
-            # embed=embed,
-            # view=AddRecordOptionView(
-            #     author_interaction=interaction,
-            #     uid=uid,
-            #     parent=self
-            # ),
-            view=discord.ui.LayoutView().add_item(container),
+            view=discord.ui.LayoutView().add_item(container.add_item(row)),
             ephemeral=True
         )
 
