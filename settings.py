@@ -15,7 +15,7 @@ class Option: # 맞춤설정
     verify_log = True
     deny_dm  = True
     verify_dm = True
-    
+
 class CustomID:
     VERIFY_RECORD = "#mcrider_bot/verify/"
     DENY_RECORD = "#mcrider_bot/deny/"
@@ -34,7 +34,7 @@ class CustomID:
     
 class BotInfo:
     NAME = "도로주행 기능사 로봇"
-    VERSION = "v1.2.0b"
+    VERSION = "v1.2.0"
     AUTHOR = "MCriderBOT | By 북극곰(BKGpolar), 미간(migan.), 헧사(hexx_4)"
     GITHUB_URL = "https://github.com/bkgpolar12/MCriderBOT"
     GITHUB_API = "https://api.github.com/repos/bkgpolar12/MCriderBOT/releases/latest"
