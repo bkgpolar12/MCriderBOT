@@ -235,11 +235,13 @@ class Admin(commands.Cog):
     async def penguin(self, interaction: discord.Interaction):
         """이펭귄에 대한 모든 유저들의 생각"""
         await interaction.response.send_message(
-            content="# 흉물",file=lpeng_image,
-            ephemeral=True
+            view=discord.ui.LayoutView()
+                .add_item(discord.ui.Section(accessory=discord.ui.Thumbnail(lpeng_image))
+                    .add_item("# 흉물")
+                ),
+            ephemeral=True,
+            file=lpeng_image
         )
-        
-
 
 
 # 봇 정보 명령어            
