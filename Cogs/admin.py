@@ -333,7 +333,6 @@ class Admin(commands.Cog):
         try:
             sheet = doc.worksheet(track_name)
             all_data = sheet.get_all_values()
-            contentlist = ""
             mode_num_str = str(mode_num)
             count = 0
             x = 0
