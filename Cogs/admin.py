@@ -135,15 +135,15 @@ class AddRecordOptionView(discord.ui.ActionRow):
                     ),
                     ephemeral=True,
                 )
-            view = discord.ui.View()
-            view.add_item(
+            row = discord.ui.ActionRow()
+            row.add_item(
                 discord.ui.Button(
                     custom_id=CustomID.make_deny_record(self.uid),
                     style=discord.ButtonStyle.danger,
                     label="거절",
                 )
             )
-            view.add_item(
+            row.add_item(
                 discord.ui.Button(
                     custom_id=CustomID.make_verify_record(self.uid),
                     style=discord.ButtonStyle.success,
@@ -153,9 +153,12 @@ class AddRecordOptionView(discord.ui.ActionRow):
             uiddata = get_uiddata_from_sheet(self.uid)
             user_obj = self.author_interaction.user
             await channel.send(
-                embed=discord.Embed(
-                    title=f"🔔 기록 등록 신청 - `#{self.uid}`",
-                    description=f"""
+                view=discord.ui.LayoutView(timeout=None)
+                    .add_item(
+                        discord.ui.Container(accent_color=EmbedColor.YELLOW)
+                            .add_item(
+                                discord.ui.Section(accessory=discord.ui.Thumbnail(get_player_head_url(uiddata['mcname'])))
+                                    .add_item(f"""### 🔔 기록 등록 신청 - `#{self.uid}`
 - **신청자** : {user_obj.display_name} ({user_obj.name})
 - **마크 닉네임** : {uiddata['mcname']}
 - **트랙명** : {uiddata['track']}
@@ -163,11 +166,11 @@ class AddRecordOptionView(discord.ui.ActionRow):
 - **탑승 카트** : {uiddata['kart']}
 - **엔진** : {uiddata['engine']}
 - **모드** : {uiddata['mode']}
-- **영상** : {uiddata['youtubevideo']}""",
-                    color=EmbedColor.YELLOW,
-                ),
-                view=view,
-                mention_author=False,
+- **영상** : {uiddata['youtubevideo']}""")
+                            )
+                            .add_item(row)
+                    ),
+                    mention_author=False
             )
             await self.author_interaction.edit_original_response(
                 view=discord.ui.LayoutView().add_item(
