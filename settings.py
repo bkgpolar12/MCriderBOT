@@ -8,6 +8,14 @@ class EmbedColor:
     LIME = 0x95FF00
     YELLOW = 0xFFFF00
 
+class Option: # 맞춤설정
+    latest_version_check = True  # 최신 버전 체크 여부
+    latest_version_check_interval = 1 # 시간 (단위: 시간)
+    maxranking = 2001
+    verify_log = True
+    deny_dm  = True
+    verify_dm = True
+    
 class CustomID:
     VERIFY_RECORD = "#mcrider_bot/verify/"
     DENY_RECORD = "#mcrider_bot/deny/"
@@ -32,11 +40,3 @@ class BotInfo:
     GITHUB_API = "https://api.github.com/repos/bkgpolar12/MCriderBOT/releases/latest"
     # GITHUB_URL_TEST = "https://github.com/bkgpolar12/test"
     # GITHUB_API_TEST = "https://api.github.com/repos/bkgpolar12/test/releases/latest"
-
-class Option: # 맞춤설정
-    latest_version_check = True  # 최신 버전 체크 여부
-    latest_version_check_interval = 12 # 시간 (단위: 시간)
-    maxranking = 2001
-    verify_log = True
-    deny_dm  = True
-    verify_dm = True
