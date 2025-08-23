@@ -14,6 +14,7 @@ import asyncio
 import Paginator
 from packaging import version as v
 import aiohttp
+from mojang import *
 
 # 일반 엔진 리스트
 normal_engines = [
@@ -334,43 +335,54 @@ class Admin(commands.Cog):
             mode_num_str = str(mode_num)
             count = 0
             x = 0
-            embeds = []
+            containers: list[discord.ui.Container] = []
+            sections: list[discord.ui.Section] = []
             for row_idx in range(1, len(all_data)):
                 row = all_data[row_idx]
                 if len(row) < 6:
                     continue
                 if row[0] and row[4] == mode_num_str and (row[3] == kartengine.value or kartengine.value == "전체"):
                     count += 1
-                    contentlist += f'''
+
+                    sections.append(
+                        discord.ui.Section(accessory=discord.ui.Thumbnail(get_player_head_url(row[0])))
+                            .add_item(f'''
 - **순위** : {count}등 
 - **닉네임** : {row[0]}
 - **기록** : {row[1]}
 - **탑승 카트** : {row[2]} 
 - **엔진** : {row[3]}
 - **모드** : {mode}
-- **영상** : {row[5]}\n\n'''
-                if count % 5 == 0 and contentlist:
-                    x = count + 1
-                    embeds.append(
-                        discord.Embed(
-                            title=f"🕐 {track_name} 순위 ({count - 4}등 ~ {count}등)",
-                            description=contentlist,
-                            color=EmbedColor.BLUE,
-                        )
+- **영상** : {row[5]}\n\n''')
                     )
-                    contentlist = ""
-            if contentlist:
-                # 0등이라 뜨는 더 방비
+                if count % 5 == 0 and sections:
+                    container = discord.ui.Container(accent_color=EmbedColor.BLUE)
+                    container.add_item(discord.ui.TextDisplay(f"### 🕐 {track_name} 순위 ({count - 4}등 ~ {count}등)"))
+
+                    for section in sections:
+                        container.add_item(section)
+                        container.add_item(discord.ui.Separator())
+
+                    x = count + 1
+                    containers.append(container)
+                    sections = []
+
+            if len(sections):
+                # 0등이라 뜨는 더 방지
                 if x == 0:
                     x += 1
-                embeds.append(
-                    discord.Embed(
-                        title=f"🕐 {track_name} 순위 ({x}등 ~ {count}등)",
-                        description=contentlist,
-                        color=EmbedColor.BLUE,
-                    )
-                )
-            if not embeds:
+
+                container = discord.ui.Container(accent_color=EmbedColor.BLUE)
+                container.add_item(discord.ui.TextDisplay(f"### 🕐 {track_name} 순위 ({x}등 ~ {count}등)"))
+
+                for section in sections:
+                    container.add_item(section)
+                    container.add_item(discord.ui.Separator())
+
+                x = count + 1
+                containers.append(container)
+
+            if not containers:
                 return await interaction.followup.send(
                     embed=discord.Embed(
                         title=f"🕐 {track_name} 순위",
@@ -378,9 +390,9 @@ class Admin(commands.Cog):
                         color=EmbedColor.BLUE,
                     )
                 )
-            if numb > len(embeds):
-                numb = len(embeds)
-            await Paginator.Simple(InitialPage=numb-1).start(interaction, pages=embeds)
+            if numb > len(containers):
+                numb = len(containers)
+            await Paginator.Simple(InitialPage=numb-1).start(interaction, pages=containers)
         except Exception as e:
             return await interaction.followup.send(
                 embed=discord.Embed(

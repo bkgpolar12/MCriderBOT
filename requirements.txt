@@ -8,9 +8,8 @@ cachetools==5.5.2
 certifi==2025.8.3
 charset-normalizer==3.4.3
 click==8.2.1
-discord.py==2.5.2
-discord.py-pagination==0.0.5
-discord.py-paginator==1.5.0
+discord.py==2.6.0
+dpy-container-pagination==0.1.1
 frozenlist==1.7.0
 google-auth==2.40.3
 google-auth-oauthlib==1.2.2
