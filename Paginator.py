@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import discord
 from discord.ext import commands
+from copy import deepcopy
 
 
 class Simple(discord.ui.ActionRow):
@@ -65,10 +66,10 @@ class Simple(discord.ui.ActionRow):
         self.add_item(self.page_counter)
         self.add_item(self.NextButton)
 
-        for page in self.pages:
-            page.add_item(self)
 
-        self.message = await ctx.send(view=discord.ui.LayoutView().add_item(self.pages[self.InitialPage]), ephemeral=self.ephemeral)
+        page = deepcopy(self.pages[self.InitialPage])
+        page.add_item(self)
+        self.message = await ctx.send(view=discord.ui.LayoutView().add_item(page), ephemeral=self.ephemeral)
 
     async def previous(self):
         if self.current_page == 0:
@@ -78,7 +79,9 @@ class Simple(discord.ui.ActionRow):
 
         self.page_counter.label = f"{self.current_page + 1}/{self.total_page_count}"
 
-        await self.message.edit(view=discord.ui.LayoutView().add_item(self.pages[self.current_page]))
+        page = deepcopy(self.pages[self.current_page])
+        page.add_item(self)
+        await self.message.edit(view=discord.ui.LayoutView().add_item(page))
 
     async def next(self):
         if self.current_page == self.total_page_count - 1:
@@ -88,7 +91,9 @@ class Simple(discord.ui.ActionRow):
 
         self.page_counter.label = f"{self.current_page + 1}/{self.total_page_count}"
 
-        await self.message.edit(view=discord.ui.LayoutView().add_item(self.pages[self.current_page]))
+        page = deepcopy(self.pages[self.current_page])
+        page.add_item(self)
+        await self.message.edit(view=discord.ui.LayoutView().add_item(page))
 
     async def next_button_callback(self, interaction: discord.Interaction):
         if interaction.user != self.ctx.author and self.AllowExtInput:
