@@ -61,12 +61,12 @@ def get_uiddata_from_sheet(uid):
     
 
 
-class AddRecordOptionView(discord.ui.View):
-    def __init__(self, author_interaction: discord.Interaction, uid, parent):
+class AddRecordOptionView(discord.ui.ActionRow):
+    def __init__(self, author_interaction: discord.Interaction, uid, client):
         self.author_interaction = author_interaction
         self.uid = uid
-        self.parent = parent
-        super().__init__(timeout=None)
+        self.client = client
+        super().__init__()
         self.options = [
             ["톡톡이 모드", False],
             ["팀전 모드", False],
@@ -125,7 +125,7 @@ class AddRecordOptionView(discord.ui.View):
                     ephemeral=True
                 )
 
-            channel = self.parent.client.get_channel(int(verifychannel))
+            channel = self.client.get_channel(int(verifychannel))
             if not channel:
                 return await interaction.followup.send(
                     embed=discord.Embed(
@@ -169,13 +169,11 @@ class AddRecordOptionView(discord.ui.View):
                 view=view,
                 mention_author=False,
             )
-            await self.author_interaction.followup.send(
-                embed=discord.Embed(
-                    title="✅ 신청 완료",
-                    description="관리자에게 요청이 전송되었습니다.",
-                    color=EmbedColor.GREEN,
-                ),
-                ephemeral=True,
+            await self.author_interaction.edit_original_response(
+                view=discord.ui.LayoutView().add_item(
+                    discord.ui.Container(accent_color=EmbedColor.GREEN)
+                    .add_item(discord.ui.TextDisplay("### ✅ 신청 완료\n관리자에게 요청이 전송되었습니다."))
+                )
             )
         except Exception as e:
             await interaction.followup.send(
@@ -455,6 +453,21 @@ class Admin(commands.Cog):
                 ),
                 ephemeral=True,
             )
+        uid = random.randint(1, 100000000)
+        container = discord.ui.Container(accent_color=EmbedColor.YELLOW).add_item(
+            discord.ui.Section(accessory=discord.ui.Thumbnail(get_player_head_url(mcname))).add_item(f"""### 🔔 새 기록 등록
+:bust_in_silhouette: **마크 닉네임** - `{mcname}`
+:map: **트랙명** - `{track_name}`
+:stopwatch: **기록** - `{record}`
+:red_car: **카트** - `{kartbody} {kartengine.value}`
+:arrow_forward: **유튜브 링크** - {youtubevideo}""")
+        ).add_item(
+            AddRecordOptionView(
+                author_interaction=interaction,
+                uid=uid,
+                client=self.client
+            )
+        )
         embed = discord.Embed(
             title="🔔 새 기록 등록",
             description=f"""
@@ -466,7 +479,6 @@ class Admin(commands.Cog):
 """,
             color=EmbedColor.YELLOW,
         )
-        uid = random.randint(1, 100000000)
         temp_sheet = doc.worksheet("RecordApplicationData")
         temp_sheet.append_row([
             uid,
@@ -482,13 +494,14 @@ class Admin(commands.Cog):
             ""   # mode
         ])
         await interaction.followup.send(
-            embed=embed,
-            view=AddRecordOptionView(
-                author_interaction=interaction,
-                uid=uid,
-                parent=self
-            ),
-            ephemeral=True       
+            # embed=embed,
+            # view=AddRecordOptionView(
+            #     author_interaction=interaction,
+            #     uid=uid,
+            #     parent=self
+            # ),
+            view=discord.ui.LayoutView().add_item(container),
+            ephemeral=True
         )
 
     @commands.Cog.listener()
