@@ -14,6 +14,9 @@ import asyncio
 import Paginator
 from packaging import version as v
 import aiohttp
+from mojang import *
+from copy import deepcopy
+
 
 # 일반 엔진 리스트
 normal_engines = [
@@ -60,12 +63,12 @@ def get_uiddata_from_sheet(uid):
     
 
 
-class AddRecordOptionView(discord.ui.View):
-    def __init__(self, author_interaction: discord.Interaction, uid, parent):
+class AddRecordOptionRow(discord.ui.ActionRow):
+    def __init__(self, author_interaction: discord.Interaction, uid: int, container: discord.ui.Container):
         self.author_interaction = author_interaction
         self.uid = uid
-        self.parent = parent
-        super().__init__(timeout=None)
+        self.container = container
+        super().__init__()
         self.options = [
             ["톡톡이 모드", False],
             ["팀전 모드", False],
@@ -124,7 +127,7 @@ class AddRecordOptionView(discord.ui.View):
                     ephemeral=True
                 )
 
-            channel = self.parent.client.get_channel(int(verifychannel))
+            channel = interaction.client.get_channel(int(verifychannel))
             if not channel:
                 return await interaction.followup.send(
                     embed=discord.Embed(
@@ -134,15 +137,15 @@ class AddRecordOptionView(discord.ui.View):
                     ),
                     ephemeral=True,
                 )
-            view = discord.ui.View()
-            view.add_item(
+            row = discord.ui.ActionRow()
+            row.add_item(
                 discord.ui.Button(
                     custom_id=CustomID.make_deny_record(self.uid),
                     style=discord.ButtonStyle.danger,
                     label="거절",
                 )
             )
-            view.add_item(
+            row.add_item(
                 discord.ui.Button(
                     custom_id=CustomID.make_verify_record(self.uid),
                     style=discord.ButtonStyle.success,
@@ -152,9 +155,12 @@ class AddRecordOptionView(discord.ui.View):
             uiddata = get_uiddata_from_sheet(self.uid)
             user_obj = self.author_interaction.user
             await channel.send(
-                embed=discord.Embed(
-                    title=f"🔔 기록 등록 신청 - `#{self.uid}`",
-                    description=f"""
+                view=discord.ui.LayoutView(timeout=None)
+                    .add_item(
+                        discord.ui.Container(accent_color=EmbedColor.YELLOW)
+                            .add_item(
+                                discord.ui.Section(accessory=discord.ui.Thumbnail(get_player_head_url(uiddata['mcname'])))
+                                    .add_item(f"""### 🔔 기록 등록 신청 - `#{self.uid}`
 - **신청자** : {user_obj.display_name} ({user_obj.name})
 - **마크 닉네임** : {uiddata['mcname']}
 - **트랙명** : {uiddata['track']}
@@ -162,19 +168,17 @@ class AddRecordOptionView(discord.ui.View):
 - **탑승 카트** : {uiddata['kart']}
 - **엔진** : {uiddata['engine']}
 - **모드** : {uiddata['mode']}
-- **영상** : {uiddata['youtubevideo']}""",
-                    color=EmbedColor.YELLOW,
-                ),
-                view=view,
-                mention_author=False,
+- **영상** : {uiddata['youtubevideo']}""")
+                            )
+                            .add_item(row)
+                    ),
+                    mention_author=False
             )
-            await self.author_interaction.followup.send(
-                embed=discord.Embed(
-                    title="✅ 신청 완료",
-                    description="관리자에게 요청이 전송되었습니다.",
-                    color=EmbedColor.GREEN,
-                ),
-                ephemeral=True,
+            await self.author_interaction.edit_original_response(
+                view=discord.ui.LayoutView().add_item(
+                    discord.ui.Container(accent_color=EmbedColor.GREEN)
+                    .add_item(discord.ui.TextDisplay("### ✅ 신청 완료\n관리자에게 요청이 전송되었습니다."))
+                )
             )
         except Exception as e:
             await interaction.followup.send(
@@ -198,13 +202,13 @@ class AddRecordOptionView(discord.ui.View):
     
 
     async def update_option(self, interaction: discord.Interaction):
+        container = deepcopy(self.container)
         idx = int(interaction.data['custom_id'])
         self.options[idx][1] = not self.options[idx][1]
         button = self.children[idx]
         button.style = discord.ButtonStyle.success if self.options[idx][1] else discord.ButtonStyle.secondary
         button.label = f"{self.options[idx][0]} : {'⭕' if self.options[idx][1] else '❌'}"
-        await interaction.response.edit_message(view=self)
-    
+        await interaction.response.edit_message(view=discord.ui.LayoutView().add_item(container.add_item(self)))
     
     
 class Admin(commands.Cog):
@@ -234,11 +238,13 @@ class Admin(commands.Cog):
     async def penguin(self, interaction: discord.Interaction):
         """이펭귄에 대한 모든 유저들의 생각"""
         await interaction.response.send_message(
-            content="# 흉물",file=lpeng_image,
-            ephemeral=True
+            view=discord.ui.LayoutView()
+                .add_item(discord.ui.Section(accessory=discord.ui.Thumbnail(lpeng_image))
+                    .add_item("# 흉물")
+                ),
+            ephemeral=True,
+            file=lpeng_image
         )
-        
-
 
 
 # 봇 정보 명령어            
@@ -330,47 +336,57 @@ class Admin(commands.Cog):
         try:
             sheet = doc.worksheet(track_name)
             all_data = sheet.get_all_values()
-            contentlist = ""
             mode_num_str = str(mode_num)
             count = 0
             x = 0
-            embeds = []
+            containers: list[discord.ui.Container] = []
+            sections: list[discord.ui.Section] = []
             for row_idx in range(1, len(all_data)):
                 row = all_data[row_idx]
                 if len(row) < 6:
                     continue
                 if row[0] and row[4] == mode_num_str and (row[3] == kartengine.value or kartengine.value == "전체"):
                     count += 1
-                    contentlist += f'''
+
+                    sections.append(
+                        discord.ui.Section(accessory=discord.ui.Thumbnail(get_player_head_url(row[0])))
+                            .add_item(f'''
 - **순위** : {count}등 
 - **닉네임** : {row[0]}
 - **기록** : {row[1]}
 - **탑승 카트** : {row[2]} 
 - **엔진** : {row[3]}
 - **모드** : {mode}
-- **영상** : {row[5]}\n\n'''
-                if count % 5 == 0 and contentlist:
-                    x = count + 1
-                    embeds.append(
-                        discord.Embed(
-                            title=f"🕐 {track_name} 순위 ({count - 4}등 ~ {count}등)",
-                            description=contentlist,
-                            color=EmbedColor.BLUE,
-                        )
+- **영상** : {row[5]}\n\n''')
                     )
-                    contentlist = ""
-            if contentlist:
-                # 0등이라 뜨는 더 방비
+                if count % 5 == 0 and sections:
+                    container = discord.ui.Container(accent_color=EmbedColor.BLUE)
+                    container.add_item(discord.ui.TextDisplay(f"### 🕐 {track_name} 순위 ({count - 4}등 ~ {count}등)"))
+
+                    for section in sections:
+                        container.add_item(section)
+                        container.add_item(discord.ui.Separator())
+
+                    x = count + 1
+                    containers.append(container)
+                    sections = []
+
+            if len(sections):
+                # 0등이라 뜨는 더 방지
                 if x == 0:
                     x += 1
-                embeds.append(
-                    discord.Embed(
-                        title=f"🕐 {track_name} 순위 ({x}등 ~ {count}등)",
-                        description=contentlist,
-                        color=EmbedColor.BLUE,
-                    )
-                )
-            if not embeds:
+
+                container = discord.ui.Container(accent_color=EmbedColor.BLUE)
+                container.add_item(discord.ui.TextDisplay(f"### 🕐 {track_name} 순위 ({x}등 ~ {count}등)"))
+
+                for section in sections:
+                    container.add_item(section)
+                    container.add_item(discord.ui.Separator())
+
+                x = count + 1
+                containers.append(container)
+
+            if not containers:
                 return await interaction.followup.send(
                     embed=discord.Embed(
                         title=f"🕐 {track_name} 순위",
@@ -378,9 +394,9 @@ class Admin(commands.Cog):
                         color=EmbedColor.BLUE,
                     )
                 )
-            if numb > len(embeds):
-                numb = len(embeds)
-            await Paginator.Simple(InitialPage=numb-1).start(interaction, pages=embeds)
+            if numb > len(containers):
+                numb = len(containers)
+            await Paginator.Simple(InitialPage=numb-1).start(interaction, pages=containers)
         except Exception as e:
             return await interaction.followup.send(
                 embed=discord.Embed(
@@ -442,18 +458,20 @@ class Admin(commands.Cog):
                 ),
                 ephemeral=True,
             )
-        embed = discord.Embed(
-            title="🔔 새 기록 등록",
-            description=f"""
+        uid = random.randint(1, 100000000)
+        container = discord.ui.Container(accent_color=EmbedColor.YELLOW).add_item(
+            discord.ui.Section(accessory=discord.ui.Thumbnail(get_player_head_url(mcname))).add_item(f"""### 🔔 새 기록 등록
 :bust_in_silhouette: **마크 닉네임** - `{mcname}`
 :map: **트랙명** - `{track_name}`
 :stopwatch: **기록** - `{record}`
 :red_car: **카트** - `{kartbody} {kartengine.value}`
-:arrow_forward: **유튜브 링크** - {youtubevideo}
-""",
-            color=EmbedColor.YELLOW,
+:arrow_forward: **유튜브 링크** - {youtubevideo}""")
         )
-        uid = random.randint(1, 100000000)
+        row = AddRecordOptionRow(
+            author_interaction=interaction,
+            uid=uid,
+            container=deepcopy(container)
+        )
         temp_sheet = doc.worksheet("RecordApplicationData")
         temp_sheet.append_row([
             uid,
@@ -469,13 +487,8 @@ class Admin(commands.Cog):
             ""   # mode
         ])
         await interaction.followup.send(
-            embed=embed,
-            view=AddRecordOptionView(
-                author_interaction=interaction,
-                uid=uid,
-                parent=self
-            ),
-            ephemeral=True       
+            view=discord.ui.LayoutView().add_item(container.add_item(row)),
+            ephemeral=True
         )
 
     @commands.Cog.listener()
