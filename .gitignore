@@ -194,5 +194,6 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 .env
-psyched-cubist.json
+psyched-cubist-462112-u2-2e7044652173.json
 .DS_Store
+.vscode
