@@ -15,7 +15,6 @@ import asyncio
 from packaging import version as v
 import aiohttp
 from mojang import *
-from copy import deepcopy
 
 normal_engines = [
     "X", "V1", "EX", "JIU", "NEW", "Z7", "PRO", "A2", "1.0", "RALLY"
